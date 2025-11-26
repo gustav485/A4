@@ -38,9 +38,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 decode_R();
                 break;
             case 0x13:
-                decode_I();
-                break;
             case 0x03: 
+            case 0x67:
                 decode_I();
                 break;
             case 0x23:
@@ -52,12 +51,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             case 0x6F:
                 decode_J();
                 break;
-            case 0x67:
-                decode_I();
-                break;
             case 0x17:
-                decode_U();
-                break;
             case 0x37:
                 decode_U();
                 break;
