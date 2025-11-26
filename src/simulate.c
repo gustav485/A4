@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols){
+struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
     int32_t regs[32] = {0};
     u_int32_t program_counter = start_addr;
     long int instruction_count = 0;
     bool done = false;
 
-    while (1){
+    while (!done) {
         u_int32_t instruction = memory_rd_w(mem, program_counter);
         u_int32_t opcode = instruction & 0x7F;
         u_int32_t rd     = (instruction >> 7) & 0x1F;
@@ -19,7 +19,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         u_int32_t funct7 = (instruction >> 25) & 0x7F;
 
         instruction_count++;
-        switch(opcode){
+        switch(opcode) {
             case 0x73: //ecall/ebreak
                 u_int32_t systemkald = regs[17];
                     switch (systemkald){
@@ -39,38 +39,50 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             printf("Error, ukendt systemkald: %u", systemkald);
                             break;
                     }
-            case 0x33: //Register-til-register instruktioner (add, sub, and, or, slt, mul …)
-
+                break;
+            case 0x33: {//Register-til-register instruktioner (add, sub, and, or, slt, mul …)
                 decode_R();
                 break;
-            case 0x13: //ALU immediate (addi, xori, ori, slti, slli, srli, srai …)
-            case 0x03: //lw, lh, lb, lhu, lbu
-            case 0x67: //jalr
+            }
+            case 0x13: {//ALU immediate (addi, xori, ori, slti, slli, srli, srai …)
+            }
+            case 0x03: {//lw, lh, lb, lhu, lbu
+            }
+            case 0x67: {//jalr
                 decode_I();
                 break;
-            case 0x23: //Store instruktioner (sw, sh, sb)
+            }
+            case 0x23: {//Store instruktioner (sw, sh, sb)
                 decode_s();
                 break;
-            case 0x63: //Branch instruktioner (beq, bne, blt, bge, bltu, bgeu)
+            }
+            case 0x63: {//Branch instruktioner (beq, bne, blt, bge, bltu, bgeu)
                 decode_B();
                 break;
-            case 0x6F: //jal
+            }
+            case 0x6F: { //jal
                 decode_J();
+
                 break;
-            case 0x17: //auipc
-                int32_t imm = instr & 0xFFFFF000; // allerede shiftet
+            }
+            case 0x17: { //auipc
+                int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
                 regs[rd] = program_counter + imm20;
+                regs[0] = 0;
                 break;
-            case 0x37: //lui
-                int32_t imm = instruction & 0xFFFFF000;
+            }
+            case 0x37: {//lui
+                int32_t imm = (int32_t)(instruction & 0xFFFFF000);
                 regs[rd] = imm;
+                regs[0] = 0;
                 break;
-            default: 
+            }
+            default: {
                 printf("Ukendt opcode: 0x%x\n", opcode);
                 done = true;
             break;
             }
-
+        }
         program_counter += 4;
     }
 }
