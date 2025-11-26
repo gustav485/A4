@@ -40,24 +40,126 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                     }
                 break;
-            case 0x33: {//Register-til-register instruktioner (add, sub, and, or, slt, mul …)
-                decode_R();
-                break;
+            case 0x33: {//R-type (add, sub, and, or, slt, mul …)
+                switch (funct3) {
+                    case 0x0: { //add, mul og sub
+                        if (funct7 == 0x0) { //add
+
+                        }
+                        else if (funct7 == 0x1) { //mul
+
+                        }
+                        else if (funct7 == 0x20) { //sub
+
+                        }
+                        break;
+                    }
+                    case 0x7: { //and og funct7 = 0000000
+
+                        break;
+                    }
+                    case 0x6: { //or og funct7 = 0000000
+
+                        break;
+                    }
+                }
+                
             }
-            case 0x13: {//ALU immediate (addi, xori, ori, slti, slli, srli, srai …)
+            case 0x13: {//I-type (addi, xori, ori, slti, slli, srli, srai …)
+                switch (funct3) {
+                    case 0x0: { //addi
+                        
+                        break;
+                    }
+                    case 0x2: { //slti
+                    
+                        break;
+                    }
+                    case 0x4: { //xori
+
+                        break;
+                    }
+                    case 0x6: { //ori
+
+                        break;
+                    }
+                    case 0x7: {
+
+                        break;
+                    }
+                }
             }
-            case 0x03: {//lw, lh, lb, lhu, lbu
+            case 0x03: {//l-type lw, lh, lb, lhu, lbu
+                switch (funct3) {
+                    case 0x0: { //lb
+
+                        break;
+                    }
+                    case 0x1: { //lh
+
+                        break;
+                    }
+                    case 0x2: { //lw
+
+                        break;
+                    }
+                    case 0x4: { //lbu
+
+                        break;
+                    }
+                    case 0x5: { //lhu
+
+                        break;
+                    }
+                }
             }
             case 0x67: {//jalr
                 decode_I();
                 break;
             }
-            case 0x23: {//Store instruktioner (sw, sh, sb)
-                decode_s();
+            case 0x23: {//S-type (sw, sh, sb)
+                switch (funct3) {
+                    case 0x0: { //sb
+                        break;
+                    }
+                    case 0x1: { //sh
+
+                        break;
+                    }
+                    case 0x2: { //sh
+
+                        break;
+                    }
+                }
                 break;
             }
-            case 0x63: {//Branch instruktioner (beq, bne, blt, bge, bltu, bgeu)
-                decode_B();
+            case 0x63: {//B-type (beq, bne, blt, bge, bltu, bgeu)
+                switch (funct3) {
+                    case 0x0: { //beq
+
+                        break;
+                    }
+                    case 0x1: { //bne
+
+                        break;
+                    }
+                    case 0x4: { //blt
+                        
+                        break;
+                    }
+                    case 0x5: { //bge
+
+                        break;
+                    }
+                    case 0x6: { //bltu
+
+                        break;
+                    }
+                    case 0x7: { //bgeu
+
+                        break;
+                    }
+                }
                 break;
             }
             case 0x6F: { //jal
