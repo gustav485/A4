@@ -25,8 +25,10 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             putchar(regs[10]);
                             break;
                         case 3:
+                            done = true;
                             break;
                         case 93:
+                            done = true;
                             break;
                         default:
                             printf("Error, ukendt systemkald: %u", systemkald);
