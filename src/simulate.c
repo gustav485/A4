@@ -42,28 +42,78 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
                 switch (funct3) {
-                    case 0x0: { //add, mul og sub
+                    case 0x0: {
                         if (funct7 == 0x0) { //add
 
                         }
                         else if (funct7 == 0x1) { //mul
 
                         }
-                        else if (funct7 == 0x20) { //sub
+                        else if (funct7 == 0x32) { //sub
 
                         }
                         break;
                     }
-                    case 0x7: { //and og funct7 = 0000000
-
-                        break;
+                    case 0x1:{ //sll
+                        if (funct7 == 0x0){ //sll
+                            break;
+                        }
+                        else if (funct7 == 0x1) { //mulh
+                            break;
+                        }
                     }
-                    case 0x6: { //or og funct7 = 0000000
-
-                        break;
+                    case 0x2: { 
+                        if (funct7 == 0x0){ //slt
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //mulhsu
+                            break;
+                        }
+                    }
+                    case 0x3: {
+                        if (funct7 == 0x0) { //sltu
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //mulhu
+                            break;
+                        }
+                    }
+                    case 0x4: { 
+                        if (funct7 == 0x0) { //xor
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //div
+                            break;
+                        }
+                    }
+                    case 0x5: {
+                        if (funct7 == 0x0){ //srl
+                            break;
+                        }
+                        else if (funct7 == 0x32){ //sra
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //divu
+                            break;
+                        }
+                    }
+                    case 0x6: { //
+                        if (funct7 == 0x0) { //or
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //rem
+                            break;
+                        }
+                    }
+                    case 0x7: {
+                        if (funct7 == 0x0) { //and
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //remu
+                            break;
+                        }
                     }
                 }
-                
             }
             case 0x13: {//I-type (addi, xori, ori, slti, slli, srli, srai …)
                 switch (funct3) {
@@ -75,6 +125,10 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     
                         break;
                     }
+                    case 0x3: { //sltiu
+                        
+                        break;
+                    }
                     case 0x4: { //xori
 
                         break;
@@ -83,9 +137,21 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
                         break;
                     }
-                    case 0x7: {
+                    case 0x7: { //andi
 
                         break;
+                    }
+                    case 0x1: { //slli
+
+                        break;
+                    }
+                    case 0x5:{
+                        if (funct7 == 0x0){ //srli
+                            break;
+                        }
+                        else if (funct7 == 0x32){ //srai
+                            break;
+                        }
                     }
                 }
             }
@@ -169,12 +235,16 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
-                regs[rd] = program_counter + imm20;
+                if (rd != 0){
+                    regs[rd] = program_counter + imm;
+                }
                 break;
             }
             case 0x37: {//lui
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000);
-                regs[rd] = imm;
+                if (rd != 0){
+                    regs[rd] = imm;
+                }
                 break;
             }
             default: {
