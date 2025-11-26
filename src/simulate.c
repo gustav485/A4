@@ -35,7 +35,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                     }
                 break;
-                
+
             case 0x33: 
                 decode_R();
                 break;
@@ -66,7 +66,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             default: 
                 printf("Ukendt opcode: 0x%x\n", opcode);
                 done = true;
-            break;
+                break;
             }
 
         program_counter += 4;
