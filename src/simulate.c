@@ -41,12 +41,16 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                 break;
                 
-            case 0x33: 
+            case 0x33:
                 decode_R();
                 break;
 
             case 0x13:
+                break;
+
             case 0x03: 
+                break;
+            
             case 0x67:
                 decode_I();
                 break;
@@ -64,8 +68,13 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
 
             case 0x17:
+                break;
+            
             case 0x37:
-                decode_U();
+                int32_t  imm = (int32_t)instruction & 0xFFFFF000;       // lui
+                if (rd != 0) {
+                    regs[rd] = imm;
+                }
                 break;
 
             default: 
