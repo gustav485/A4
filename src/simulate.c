@@ -13,8 +13,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         u_int32_t instruktion = memory_rd_w(mem, program_counter);
         u_int32_t opcode = instruktion & 0x7F;
 
+        instruction_count++;
         switch(opcode){
-            instruction_count++;
             case 0x73:
                 u_int32_t systemkald = regs[17];
                     switch (systemkald){
@@ -34,27 +34,35 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             printf("Error, ukendt systemkald: %u", systemkald);
                             break;
                     }
+                break;
+                
             case 0x33: 
                 decode_R();
                 break;
+
             case 0x13:
             case 0x03: 
             case 0x67:
                 decode_I();
                 break;
+
             case 0x23:
                 decode_s();
                 break;
+
             case 0x63:
                 decode_B();
                 break;
+
             case 0x6F:
                 decode_J();
                 break;
+
             case 0x17:
             case 0x37:
                 decode_U();
                 break;
+
             default: 
                 printf("Ukendt opcode: 0x%x\n", opcode);
                 done = true;
