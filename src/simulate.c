@@ -20,9 +20,9 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
         instruction_count++;
         switch(opcode){
-            case 0x73:
-                u_int32_t systemcall = regs[17];
-                    switch (systemcall){
+            case 0x73: //ecall/ebreak
+                u_int32_t systemkald = regs[17];
+                    switch (systemkald){
                         case 1:
                             regs[10] = getchar();
                             break;
@@ -36,47 +36,35 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             done = true;
                             break;
                         default:
-                            printf("Error, ukendt systemkald: %u", systemcall);
+                            printf("Error, ukendt systemkald: %u", systemkald);
                             break;
                     }
-                break;
-                
-            case 0x33:
+            case 0x33: //Register-til-register instruktioner (add, sub, and, or, slt, mul …)
+
                 decode_R();
                 break;
-
-            case 0x13:
-                break;
-
-            case 0x03: 
-                break;
-            
-            case 0x67:
+            case 0x13: //ALU immediate (addi, xori, ori, slti, slli, srli, srai …)
+            case 0x03: //lw, lh, lb, lhu, lbu
+            case 0x67: //jalr
                 decode_I();
                 break;
-
-            case 0x23:
+            case 0x23: //Store instruktioner (sw, sh, sb)
                 decode_s();
                 break;
-
-            case 0x63:
+            case 0x63: //Branch instruktioner (beq, bne, blt, bge, bltu, bgeu)
                 decode_B();
                 break;
-
-            case 0x6F:
+            case 0x6F: //jal
                 decode_J();
                 break;
-
-            case 0x17:
+            case 0x17: //auipc
+                int32_t imm = instr & 0xFFFFF000; // allerede shiftet
+                regs[rd] = program_counter + imm20;
                 break;
-            
-            case 0x37:
-                int32_t  imm = (int32_t)instruction & 0xFFFFF000;       // lui
-                if (rd != 0) {
-                    regs[rd] = imm;
-                }
+            case 0x37: //lui
+                int32_t imm = instruction & 0xFFFFF000;
+                regs[rd] = imm;
                 break;
-
             default: 
                 printf("Ukendt opcode: 0x%x\n", opcode);
                 done = true;
