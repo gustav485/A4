@@ -68,13 +68,11 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
                 regs[rd] = program_counter + imm20;
-                regs[0] = 0;
                 break;
             }
             case 0x37: {//lui
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000);
                 regs[rd] = imm;
-                regs[0] = 0;
                 break;
             }
             default: {
@@ -83,6 +81,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             break;
             }
         }
+        regs[0] = 0;
         program_counter += 4;
     }
 }
