@@ -121,6 +121,9 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         
                         break;
                     }
+                    case 0x1: { //slli
+                        break;
+                    }
                     case 0x2: { //slti
                     
                         break;
@@ -133,18 +136,6 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
                         break;
                     }
-                    case 0x6: { //ori
-
-                        break;
-                    }
-                    case 0x7: { //andi
-
-                        break;
-                    }
-                    case 0x1: { //slli
-
-                        break;
-                    }
                     case 0x5:{
                         if (funct7 == 0x0){ //srli
                             break;
@@ -152,6 +143,14 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         else if (funct7 == 0x32){ //srai
                             break;
                         }
+                    }
+                    case 0x6: { //ori
+
+                        break;
+                    }
+                    case 0x7: { //andi
+
+                        break;
                     }
                 }
             }
