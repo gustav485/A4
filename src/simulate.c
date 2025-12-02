@@ -197,26 +197,39 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                 }
             }
-            case 0x03: {//l-type lw, lh, lb, lhu, lbu
+            case 0x03: {//l-type lw, lh, lb, lhu, lbu                   //Vi sign extender de forskellige værdier. 
                 switch (funct3) {
-                    case 0x0: { //lb
+                    int32_t imm = instruction >> 20;
+                    uint32_t address = regs[rs1] + imm;
 
+                    case 0x0: { //lb
+                        if (rd != 0){
+                            regs[rd] = (int8_t)memory_rd_b(mem, address);
+                        }
                         break;
                     }
                     case 0x1: { //lh
-
+                        if (rd != 0){
+                            regs[rd] = (int16_t)memory_rd_b(mem, address);
+                        }
                         break;
                     }
                     case 0x2: { //lw
-
+                        if (rd != 0){
+                            regs[rd] = memory_rd_w(mem, address);
+                        }
                         break;
                     }
                     case 0x4: { //lbu
-
+                        if (rd != 0){
+                            regs[rd] = memory_rd_w(mem, address) & 0xFF;
+                        }
                         break;
                     }
                     case 0x5: { //lhu
-
+                        if (rd != 0){
+                            regs[rd] = memory_rd_w(mem, address) & 0xFFFF;
+                        }
                         break;
                     }
                 }
