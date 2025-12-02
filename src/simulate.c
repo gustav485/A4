@@ -18,12 +18,17 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         u_int32_t rs1    = (instruction >> 15) & 0x1F;
         u_int32_t rs2    = (instruction >> 20) & 0x1F;
         u_int32_t funct7 = (instruction >> 25) & 0x7F;
+        u_int32_t systemkald;
 
         instruction_count++;
         switch(opcode) {
             case 0x73: //ecall/ebreak
-                u_int32_t systemkald = regs[17];
+                systemkald = regs[17];
+                struct Stat stat;
+                stat.insns = instruction_count;
                     switch (systemkald){
+                        case 0:                     
+                            return stat;
                         case 1:
                             regs[10] = getchar();
                             break;
@@ -32,13 +37,11 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                         case 3:
                         case 93:{
-                            struct Stat stat;
-                            stat.insns = instruction_count;
                             return stat;
                         }
                         default:
                             printf("Error, ukendt systemkald: %u", systemkald);
-                            break;
+                            return stat;
                     }
                 break;
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
@@ -46,15 +49,12 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     case 0x0: {
                         if (funct7 == 0x0) { //add
                             regs[rd] = regs[rs1] + regs[rs2];
-                            instruction_count++;
                         }
                         else if (funct7 == 0x1) { //mul
-                            regs[rd] = regs[rs1] * regs[rs2];
-                            instruction_count++;
+                            regs[rd] = regs[rs1] * regs[rs2];                            
                         }
                         else if (funct7 == 0x20) { //sub
                             regs[rd] = regs[rs1] - regs[rs2];
-                            instruction_count++;
                         }
                         break;
                     }
@@ -74,18 +74,28 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                         }
                         else if (funct7 == 0x1){ //mulhsu
-                            u_int32_t long long regs[rd] = long long regs[rs1] * u_int32_t long long regs[rs2];
+                            int64_t a = (int64_t)(int32_t)regs[rs1];
+                            int64_t b = (int64_t)(uint32_t)regs[rs2];
+                            int64_t result = a * b;
+                            if (rd != 0) {
+                                regs[rd] = (int32_t)(result >> 32);  // høje 32 bit
+                            }
                             break;
                         }
                     }
                     case 0x3: {
                         if (funct7 == 0x0) { //sltu
-                            u_int32_t regs[rd] = (u_int32_t regs[rs1] < regs[rs2]);
-                            break;
+                            if (rd != 0) {
+                                regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
+                            }
                         }
                         else if (funct7 == 0x1){ //mulhu
-                            u_int32_t long long regs[rd] = u_int32_t long long regs[rs1] * u_int32_t long long regs[rs2];
-                            break;
+                            uint64_t a = (uint64_t)(uint32_t)regs[rs1];
+                            uint64_t b = (uint64_t)(uint32_t)regs[rs2];
+                            uint64_t result = a * b;
+                            if (rd != 0) {
+                                regs[rd] = (uint32_t)(result >> 32);  // høje 32 bit
+                            }
                         }
                     }
                     case 0x4: { 
@@ -94,8 +104,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                         }
                         else if (funct7 == 0x1){ //div
-                            if (rs2 == 0) {
-                                return -1;
+                            if (regs[rs2] == 0) {
+                                regs[rd] = -1;
                             }
                             else {
                                 regs[rd] = regs[rs1] / regs[rs2];
@@ -109,22 +119,22 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                         }
                         else if (funct7 == 0x20){ //sra
-                            regs[rd] = regs[rs1] >>> regs[rs2];
+                            regs[rd] = regs[rs1] >> regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //divu
                             if (regs[rs2] == 0) {
-                                return -1;
+                                regs[rd] = -1;
                             }
                             else {
-                            u_int32_t regs[rd] = (u_int32_t regs[rs1] / u_int32_t regs[rs2]);
+                            regs[rd] = (uint32_t)regs[rs1] / (uint32_t)regs[rs2];
                             }
                             break;
                         }
                     }
                     case 0x6: { //
                         if (funct7 == 0x0) { //or
-                            regs[rd] = regs[rs1] || regs[rs2];
+                            regs[rd] = regs[rs1] | regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //rem
@@ -134,11 +144,11 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                     case 0x7: {
                         if (funct7 == 0x0) { //and
-                            regs[rd] = regs[rs1] && regs[rs2];
+                            regs[rd] = regs[rs1] & regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //remu
-                            u_int32_t regs[rd] = u_int32_t regs[rs1] % regs[rs2];
+                            regs[rd] = (uint32_t)regs[rs1] % (uint32_t)regs[rs2];
                             break;
                         }
                     }
@@ -198,10 +208,9 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 }
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu                   //Vi sign extender de forskellige værdier. 
+                int32_t imm = instruction >> 20;
+                uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
-                    int32_t imm = instruction >> 20;
-                    uint32_t address = regs[rs1] + imm;
-
                     case 0x0: { //lb
                         if (rd != 0){
                             regs[rd] = (int8_t)memory_rd_b(mem, address);
@@ -210,7 +219,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                     case 0x1: { //lh
                         if (rd != 0){
-                            regs[rd] = (int16_t)memory_rd_b(mem, address);
+                            regs[rd] = (int16_t)memory_rd_h(mem, address);
                         }
                         break;
                     }
@@ -222,13 +231,13 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                     case 0x4: { //lbu
                         if (rd != 0){
-                            regs[rd] = memory_rd_w(mem, address) & 0xFF;
+                            regs[rd] = memory_rd_b(mem, address) & 0xFF;
                         }
                         break;
                     }
                     case 0x5: { //lhu
                         if (rd != 0){
-                            regs[rd] = memory_rd_w(mem, address) & 0xFFFF;
+                            regs[rd] = memory_rd_h(mem, address) & 0xFFFF;
                         }
                         break;
                     }
@@ -236,20 +245,29 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             case 0x67: {//jalr
-                decode_I();
+                int32_t imm = (int32_t)instruction >> 20;           // sign-extendet offset
+                uint32_t target = regs[rs1] + imm;
+                target &= ~1;                                       // clear bit 0 (RISC-V kræver det)
+                if (rd != 0) {
+                    regs[rd] = program_counter + 4;
+                }
+                program_counter = target - 4;                       // -4 fordi vi tilføjer +4 til sidst
                 break;
             }
             case 0x23: {//S-type (sw, sh, sb)
+                int32_t imm = ((int32_t)(instruction << 12) >> 20);
+                uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //sb
+                            memory_wr_b(mem, address, regs[rs2] & 0xFF);
                         break;
                     }
                     case 0x1: { //sh
-
+                            memory_wr_h(mem, address, regs[rs2] & 0xFFFF);                
                         break;
                     }
-                    case 0x2: { //sh
-
+                    case 0x2: { //sw
+                            memory_wr_w(mem, address, regs[rs2]);                        
                         break;
                     }
                 }
