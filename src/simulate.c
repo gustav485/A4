@@ -146,44 +146,56 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             case 0x13: {//I-type (addi, xori, ori, slti, slli, srli, srai …)
+                int32_t immI = (int32_t)instruction >> 20; //de første 12 bits skal stores i imm[11:0]
+                uint32_t shamt = immI & 0x1F;
                 switch (funct3) {
                     case 0x0: { //addi
-                        
+                        if (rd != 0)
+                            regs[rd] = regs[rs1] + immI;
                         break;
                     }
                     case 0x1: { //slli
+                        if (rd != 0)
+                            regs[rd] = regs[rs1] << shamt;
                         break;
                     }
                     case 0x2: { //slti
-                    
+                        if (rd != 0)
+                            regs[rd] =  (regs[rs1] < immI) ? 1 : 0;                    
                         break;
                     }
                     case 0x3: { //sltiu
-                        
+                        if (rd != 0)
+                            regs[rd] =  ((uint32_t)regs[rs1] < (uint32_t)immI) ? 1 : 0;  
                         break;
                     }
                     case 0x4: { //xori
-
+                        if (rd != 0)
+                            regs[rd] = regs[rs1] ^ immI;
                         break;
                     }
                     case 0x5:{
                         if (funct7 == 0x0){ //srli
-                            break;
+                            if (rd != 0)
+                                regs[rd] = ((uint32_t)regs[rs1]) >> shamt;
                         }
-                        else if (funct7 == 0x32){ //srai
-                            break;
+                        else if (funct7 == 0x20){ //srai
+                            if (rd != 0)
+                                regs[rd] = regs[rs1] >> shamt;
                         }
+                        break;
                     }
                     case 0x6: { //ori
-
+                        if (rd != 0)
+                            regs[rd] = regs[rs1] | immI;
                         break;
                     }
                     case 0x7: { //andi
-
+                        if (rd != 0)
+                            regs[rd] = regs[rs1] & immI;
                         break;
                     }
                 }
-                break;
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu
                 switch (funct3) {
