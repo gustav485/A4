@@ -256,29 +256,46 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             case 0x63: {//B-type (beq, bne, blt, bge, bltu, bgeu)
+                int32_t imm12 = (instruction >> 31) & 0x1;
+                int32_t imm10_5 = (instruction >> 25) & 0x3F;
+                int32_t imm4_1 = (instruction >> 8) & 0xF;
+                int32_t imm11 = (instruction >> 7) & 0x1;
+
+                int32_t immB = 0;
+                immB |= (imm12 << 12);
+                immB |= (imm10_5 << 5);
+                immB |= (imm4_1 << 1);
+                immB |= (imm11 << 11);
+
                 switch (funct3) {
                     case 0x0: { //beq
-
+                        if (regs[rs1] == regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                     case 0x1: { //bne
-
+                        if (regs[rs1] != regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                     case 0x4: { //blt
-                        
+                        if ((int32_t)regs[rs1] < (int32_t)regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                     case 0x5: { //bge
-
+                        if ((int32_t)regs[rs1] >= (int32_t)regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                     case 0x6: { //bltu
-
+                        if ((uint32_t)regs[rs1] < (uint32_t)regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                     case 0x7: { //bgeu
-
+                        if ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2])
+                            program_counter += immB;
                         break;
                     }
                 }
