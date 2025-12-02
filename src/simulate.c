@@ -1,7 +1,8 @@
 #include <memory.h>
-#include <simulate.h>
+#include "simulate.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
     int32_t regs[32] = {0};
@@ -44,76 +45,105 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 switch (funct3) {
                     case 0x0: {
                         if (funct7 == 0x0) { //add
-
+                            regs[rd] = regs[rs1] + regs[rs2];
+                            instruction_count++;
                         }
                         else if (funct7 == 0x1) { //mul
-
+                            regs[rd] = regs[rs1] * regs[rs2];
+                            instruction_count++;
                         }
                         else if (funct7 == 0x32) { //sub
-
+                            regs[rd] = regs[rs1] - regs[rs2];
+                            instruction_count++;
                         }
                         break;
                     }
                     case 0x1:{ //sll
                         if (funct7 == 0x0){ //sll
+                            regs[rd] = regs[rs1] << regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1) { //mulh
+                            regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
                             break;
                         }
                     }
                     case 0x2: { 
                         if (funct7 == 0x0){ //slt
+                            regs[rd] = (regs[rs1] < regs[rs2]);
                             break;
                         }
                         else if (funct7 == 0x1){ //mulhsu
+                            u_int32_t long long regs[rd] = long long regs[rs1] * u_int32_t long long regs[rs2];
                             break;
                         }
                     }
                     case 0x3: {
                         if (funct7 == 0x0) { //sltu
+                            u_int32_t regs[rd] = (u_int32_t regs[rs1] < regs[rs2]);
                             break;
                         }
                         else if (funct7 == 0x1){ //mulhu
+                            u_int32_t long long regs[rd] = u_int32_t long long regs[rs1] * u_int32_t long long regs[rs2];
                             break;
                         }
                     }
                     case 0x4: { 
                         if (funct7 == 0x0) { //xor
+                            regs[rd] = regs[rs1] ^ regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //div
+                            if (rs2 == 0) {
+                                return -1;
+                            }
+                            else {
+                                regs[rd] = regs[rs1] / regs[rs2];
+                            }
                             break;
                         }
                     }
                     case 0x5: {
                         if (funct7 == 0x0){ //srl
+                            regs[rd] = regs[rs1] >> regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x32){ //sra
+                            regs[rd] = regs[rs1] >>> regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //divu
+                            if (regs[rs2] == 0) {
+                                return -1;
+                            }
+                            else {
+                            u_int32_t regs[rd] = (u_int32_t regs[rs1] / u_int32_t regs[rs2]);
+                            }
                             break;
                         }
                     }
                     case 0x6: { //
                         if (funct7 == 0x0) { //or
+                            regs[rd] = regs[rs1] || regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //rem
+                            regs[rd] = regs[rs1] % regs[rs2];
                             break;
                         }
                     }
                     case 0x7: {
                         if (funct7 == 0x0) { //and
+                            regs[rd] = regs[rs1] && regs[rs2];
                             break;
                         }
                         else if (funct7 == 0x1){ //remu
+                            u_int32_t regs[rd] = u_int32_t regs[rs1] % regs[rs2];
                             break;
                         }
                     }
                 }
+                break;
             }
             case 0x13: {//I-type (addi, xori, ori, slti, slli, srli, srai …)
                 switch (funct3) {
@@ -153,6 +183,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         break;
                     }
                 }
+                break;
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu
                 switch (funct3) {
@@ -177,6 +208,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         break;
                     }
                 }
+                break;
             }
             case 0x67: {//jalr
                 decode_I();
@@ -234,15 +266,15 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         ((instruction >>  0) & 0x000FF000) |   // bit 19:12
                         ((instruction >> 21) & 0x000007FE);    // bit 10:1
 
-                    if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
+                if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
 
-                    if (rd != 0) {
-                        regs[rd] = program_counter + 4;   // ← returadresse!
-                    }
+                if (rd != 0) {
+                    regs[rd] = program_counter + 4;   // ← returadresse!
+                }
 
-                    program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
+                program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
 
-                    break;
+                break;
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
@@ -261,7 +293,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             default: {
                 printf("Ukendt opcode: 0x%x\n", opcode);
                 done = true;
-            break;
+                break;
             }
         }
         regs[0] = 0;
