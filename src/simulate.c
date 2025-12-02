@@ -30,11 +30,11 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             putchar(regs[10]);
                             break;
                         case 3:
-                            done = true;
-                            break;
-                        case 93:
-                            done = true;
-                            break;
+                        case 93:{
+                            struct Stat stat;
+                            stat.insns = instruction_count;
+                            return stat;
+                        }
                         default:
                             printf("Error, ukendt systemkald: %u", systemkald);
                             break;
@@ -229,9 +229,21 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             case 0x6F: { //jal
-                decode_J();
+                int32_t imm = 
+                        ((instruction >> 11) & 0x00100000) |   // bit 20 (sign)
+                        ((instruction >> 20) & 0x00000800) |   // bit 11
+                        ((instruction >>  0) & 0x000FF000) |   // bit 19:12
+                        ((instruction >> 21) & 0x000007FE);    // bit 10:1
 
-                break;
+                    if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
+
+                    if (rd != 0) {
+                        regs[rd] = program_counter + 4;   // ← returadresse!
+                    }
+
+                    program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
+
+                    break;
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
