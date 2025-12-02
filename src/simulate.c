@@ -52,7 +52,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             regs[rd] = regs[rs1] * regs[rs2];
                             instruction_count++;
                         }
-                        else if (funct7 == 0x32) { //sub
+                        else if (funct7 == 0x20) { //sub
                             regs[rd] = regs[rs1] - regs[rs2];
                             instruction_count++;
                         }
@@ -108,7 +108,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             regs[rd] = regs[rs1] >> regs[rs2];
                             break;
                         }
-                        else if (funct7 == 0x32){ //sra
+                        else if (funct7 == 0x20){ //sra
                             regs[rd] = regs[rs1] >>> regs[rs2];
                             break;
                         }
