@@ -13,10 +13,10 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
     while (!done) {
         u_int32_t instruction = memory_rd_w(mem, program_counter);
         u_int32_t opcode = instruction & 0x7F;
-        u_int32_t rd     = (instruction >> 7) & 0x1F;
+        u_int32_t rd = (instruction >> 7) & 0x1F;
         u_int32_t funct3 = (instruction >> 12) & 0x07;
-        u_int32_t rs1    = (instruction >> 15) & 0x1F;
-        u_int32_t rs2    = (instruction >> 20) & 0x1F;
+        u_int32_t rs1 = (instruction >> 15) & 0x1F;
+        u_int32_t rs2 = (instruction >> 20) & 0x1F;
         u_int32_t funct7 = (instruction >> 25) & 0x7F;
         u_int32_t systemkald;
 
