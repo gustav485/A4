@@ -1,4 +1,4 @@
-#include <memory.h>
+#include "memory.h"
 #include "simulate.h"
 #include <stdio.h>
 #include <stdbool.h>
@@ -6,19 +6,19 @@
 
 struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
     int32_t regs[32] = {0};
-    u_int32_t program_counter = start_addr;
+    uint32_t program_counter = start_addr;
     long int instruction_count = 0;
     bool done = false;
 
     while (!done) {
-        u_int32_t instruction = memory_rd_w(mem, program_counter);
-        u_int32_t opcode = instruction & 0x7F;
-        u_int32_t rd = (instruction >> 7) & 0x1F;
-        u_int32_t funct3 = (instruction >> 12) & 0x07;
-        u_int32_t rs1 = (instruction >> 15) & 0x1F;
-        u_int32_t rs2 = (instruction >> 20) & 0x1F;
-        u_int32_t funct7 = (instruction >> 25) & 0x7F;
-        u_int32_t systemkald;
+        uint32_t instruction = memory_rd_w(mem, program_counter);
+        uint32_t opcode = instruction & 0x7F;
+        uint32_t rd = (instruction >> 7) & 0x1F;
+        uint32_t funct3 = (instruction >> 12) & 0x07;
+        uint32_t rs1 = (instruction >> 15) & 0x1F;
+        uint32_t rs2 = (instruction >> 20) & 0x1F;
+        uint32_t funct7 = (instruction >> 25) & 0x7F;
+        uint32_t systemkald;
 
         instruction_count++;
         switch(opcode) {
@@ -78,7 +78,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         }
                         else if (funct7 == 0x1) { //mulh
                             if (rd != 0) {
-                                regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
+                                regs[rd] = (uint32_t) regs[rs1] * (uint32_t) regs[rs2];
                             }
                             break;
                         }

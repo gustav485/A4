@@ -14,12 +14,12 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
         "s8",   "s9", "s10", "s11", "t3", "t4", "t5", "t6"
     };
 
-    u_int32_t opcode = instruction & 0x7F;
-    u_int32_t rd  = (instruction >> 7) & 0x1F;
-    u_int32_t rs1 = (instruction >> 15) & 0x1F;
-    u_int32_t rs2 = (instruction >> 20) & 0x1F;
-    u_int32_t funct3 = (instruction >> 12) & 7;
-    u_int32_t funct7 = (instruction >> 25) & 0x7F;
+    uint32_t opcode = instruction & 0x7F;
+    uint32_t rd  = (instruction >> 7) & 0x1F;
+    uint32_t rs1 = (instruction >> 15) & 0x1F;
+    uint32_t rs2 = (instruction >> 20) & 0x1F;
+    uint32_t funct3 = (instruction >> 12) & 7;
+    uint32_t funct7 = (instruction >> 25) & 0x7F;
 
     switch(opcode) {
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
