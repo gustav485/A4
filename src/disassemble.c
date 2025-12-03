@@ -25,115 +25,115 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
     u_int32_t funct7 = (instruction >> 25) & 0x7F;
 
     switch(opcode) {
-        case 0x33: {//R-type (add, sub, and, or, slt, mul …)
-            switch (funct3) {
-                case 0x0: {
-                    if (funct7 == 0x0) { //add
-                        regs[rd] = regs[rs1] + regs[rs2];
-                    }
-                    else if (funct7 == 0x1) { //mul
-                        regs[rd] = regs[rs1] * regs[rs2];                            
-                    }
-                    else if (funct7 == 0x20) { //sub
-                        regs[rd] = regs[rs1] - regs[rs2];
-                    }
-                    break;
-                }
-                case 0x1:{ //sll
-                    if (funct7 == 0x0){ //sll
-                        regs[rd] = regs[rs1] << regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x1) { //mulh
-                        regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
-                        break;
-                    }
-                }
-                case 0x2: { 
-                    if (funct7 == 0x0){ //slt
-                        regs[rd] = (regs[rs1] < regs[rs2]);
-                        break;
-                    }
-                    else if (funct7 == 0x1){ //mulhsu
-                        int64_t a = (int64_t)(int32_t)regs[rs1];
-                        int64_t b = (int64_t)(uint32_t)regs[rs2];
-                        int64_t result = a * b;
-                        if (rd != 0) {
-                            regs[rd] = (int32_t)(result >> 32);  // høje 32 bit
+                   case 0x33: {//R-type (add, sub, and, or, slt, mul …)
+                switch (funct3) {
+                    case 0x0: {
+                        if (funct7 == 0x0) { //add
+                            regs[rd] = regs[rs1] + regs[rs2];
+                        }
+                        else if (funct7 == 0x1) { //mul
+                            regs[rd] = regs[rs1] * regs[rs2];                            
+                        }
+                        else if (funct7 == 0x20) { //sub
+                            regs[rd] = regs[rs1] - regs[rs2];
                         }
                         break;
                     }
-                }
-                case 0x3: {
-                    if (funct7 == 0x0) { //sltu
-                        if (rd != 0) {
-                            regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
+                    case 0x1:{ //sll
+                        if (funct7 == 0x0){ //sll
+                            regs[rd] = regs[rs1] << regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x1) { //mulh
+                            regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
+                            break;
                         }
                     }
-                    else if (funct7 == 0x1){ //mulhu
-                        uint64_t a = (uint64_t)(uint32_t)regs[rs1];
-                        uint64_t b = (uint64_t)(uint32_t)regs[rs2];
-                        uint64_t result = a * b;
-                        if (rd != 0) {
-                            regs[rd] = (uint32_t)(result >> 32);  // høje 32 bit
+                    case 0x2: { 
+                        if (funct7 == 0x0){ //slt
+                            regs[rd] = (regs[rs1] < regs[rs2]);
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //mulhsu
+                            int64_t a = (int64_t)(int32_t)regs[rs1];
+                            int64_t b = (int64_t)(uint32_t)regs[rs2];
+                            int64_t result = a * b;
+                            if (rd != 0) {
+                                regs[rd] = (int32_t)(result >> 32);  // høje 32 bit
+                            }
+                            break;
+                        }
+                    }
+                    case 0x3: {
+                        if (funct7 == 0x0) { //sltu
+                            if (rd != 0) {
+                                regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
+                            }
+                        }
+                        else if (funct7 == 0x1){ //mulhu
+                            uint64_t a = (uint64_t)(uint32_t)regs[rs1];
+                            uint64_t b = (uint64_t)(uint32_t)regs[rs2];
+                            uint64_t result = a * b;
+                            if (rd != 0) {
+                                regs[rd] = (uint32_t)(result >> 32);  // høje 32 bit
+                            }
+                        }
+                    }
+                    case 0x4: { 
+                        if (funct7 == 0x0) { //xor
+                            regs[rd] = regs[rs1] ^ regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //div
+                            if (regs[rs2] == 0) {
+                                regs[rd] = -1;
+                            }
+                            else {
+                                regs[rd] = regs[rs1] / regs[rs2];
+                            }
+                            break;
+                        }
+                    }
+                    case 0x5: {
+                        if (funct7 == 0x0){ //srl
+                            regs[rd] = regs[rs1] >> regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x20){ //sra
+                            regs[rd] = regs[rs1] >> regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //divu
+                            if (regs[rs2] == 0) {
+                                regs[rd] = -1;
+                            }
+                            else {
+                            regs[rd] = (uint32_t)regs[rs1] / (uint32_t)regs[rs2];
+                            }
+                            break;
+                        }
+                    }
+                    case 0x6: { //
+                        if (funct7 == 0x0) { //or
+                            regs[rd] = regs[rs1] | regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //rem
+                            regs[rd] = regs[rs1] % regs[rs2];
+                            break;
+                        }
+                    }
+                    case 0x7: {
+                        if (funct7 == 0x0) { //and
+                            regs[rd] = regs[rs1] & regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x1){ //remu
+                            regs[rd] = (uint32_t)regs[rs1] % (uint32_t)regs[rs2];
+                            break;
                         }
                     }
                 }
-                case 0x4: { 
-                    if (funct7 == 0x0) { //xor
-                        regs[rd] = regs[rs1] ^ regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x1){ //div
-                        if (regs[rs2] == 0) {
-                            regs[rd] = -1;
-                        }
-                        else {
-                            regs[rd] = regs[rs1] / regs[rs2];
-                        }
-                        break;
-                    }
-                }
-                case 0x5: {
-                    if (funct7 == 0x0){ //srl
-                        regs[rd] = regs[rs1] >> regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x20){ //sra
-                        regs[rd] = regs[rs1] >> regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x1){ //divu
-                        if (regs[rs2] == 0) {
-                            regs[rd] = -1;
-                        }
-                        else {
-                        regs[rd] = (uint32_t)regs[rs1] / (uint32_t)regs[rs2];
-                        }
-                        break;
-                    }
-                }
-                case 0x6: { //
-                    if (funct7 == 0x0) { //or
-                        regs[rd] = regs[rs1] | regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x1){ //rem
-                        regs[rd] = regs[rs1] % regs[rs2];
-                        break;
-                    }
-                }
-                case 0x7: {
-                    if (funct7 == 0x0) { //and
-                        regs[rd] = regs[rs1] & regs[rs2];
-                        break;
-                    }
-                    else if (funct7 == 0x1){ //remu
-                        regs[rd] = (uint32_t)regs[rs1] % (uint32_t)regs[rs2];
-                        break;
-                    }
-                }
-            }
             break;
         }
         case 0x13: {//I-type (addi, xori, ori, slti, slli, srli, srai …)
