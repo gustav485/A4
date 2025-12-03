@@ -119,85 +119,67 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                 uint32_t shamt = immI & 0x1F;
                 switch (funct3) {
                     case 0x0: { //addi
-                        if (rd != 0)
-                            regs[rd] = regs[rs1] + immI;
+                        snprintf(result, buf_size, "addi %s %s %d", regname[rd], regname[rs1], immI);
                         break;
+
                     }
                     case 0x1: { //slli
-                        if (rd != 0)
-                            regs[rd] = regs[rs1] << shamt;
+                        snprintf(result, buf_size, "slli %s %s %d", regname[rd], regname[rs1], shamt);
                         break;
                     }
                     case 0x2: { //slti
-                        if (rd != 0)
-                            regs[rd] =  (regs[rs1] < immI) ? 1 : 0;                    
+                        snprintf(result, buf_size, "slti %s %s %d", regname[rd], regname[rs1], immI);               
                         break;
                     }
                     case 0x3: { //sltiu
-                        if (rd != 0)
-                            regs[rd] =  ((uint32_t)regs[rs1] < (uint32_t)immI) ? 1 : 0;  
+                        snprintf(result, buf_size, "sltiu %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                     case 0x4: { //xori
-                        if (rd != 0)
-                            regs[rd] = regs[rs1] ^ immI;
+                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                     case 0x5:{
                         if (funct7 == 0x0){ //srli
-                            if (rd != 0)
-                                regs[rd] = ((uint32_t)regs[rs1]) >> shamt;
+                            snprintf(result, buf_size, "srli %s %s %d", regname[rd], regname[rs1], shamt);
                         }
                         else if (funct7 == 0x20){ //srai
-                            if (rd != 0)
-                                regs[rd] = regs[rs1] >> shamt;
+                            snprintf(result, buf_size, "srli %s %s %d", regname[rd], regname[rs1], shamt);                        
                         }
                         break;
                     }
                     case 0x6: { //ori
-                        if (rd != 0)
-                            regs[rd] = regs[rs1] | immI;
+                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                     case 0x7: { //andi
-                        if (rd != 0)
-                            regs[rd] = regs[rs1] & immI;
+                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                 }
             }
-            case 0x03: {//l-type lw, lh, lb, lhu, lbu                   //Vi sign extender de forskellige værdier. 
+            case 0x03: {//l-type lw, lh, lb, lhu, lbu
                 int32_t imm = instruction >> 20;
                 uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //lb
-                        if (rd != 0){
-                            regs[rd] = (int8_t)memory_rd_b(mem, address);
-                        }
+                        snprintf(result, buf_size, "lb %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x1: { //lh
-                        if (rd != 0){
-                            regs[rd] = (int16_t)memory_rd_h(mem, address);
-                        }
+                        snprintf(result, buf_size, "lh %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x2: { //lw
-                        if (rd != 0){
-                            regs[rd] = memory_rd_w(mem, address);
-                        }
+                        snprintf(result, buf_size, "lw %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x4: { //lbu
-                        if (rd != 0){
-                            regs[rd] = memory_rd_b(mem, address) & 0xFF;
-                        }
+                        snprintf(result, buf_size, "lbu %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x5: { //lhu
-                        if (rd != 0){
-                            regs[rd] = memory_rd_h(mem, address) & 0xFFFF;
-                        }
+                        snprintf(result, buf_size, "lhu %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                 }
@@ -207,10 +189,8 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                 int32_t imm = (int32_t)instruction >> 20;           // sign-extendet offset
                 uint32_t target = regs[rs1] + imm;
                 target &= ~1;                                       // clear bit 0 (RISC-V kræver det)
-                if (rd != 0) {
-                    regs[rd] = program_counter + 4;
-                }
-                program_counter = target - 4;                       // -4 fordi vi tilføjer +4 til sidst
+
+                snprintf(result, buf_size, "jalr %s %d(%s)", regname[rd], imm, regname[rs1]);
                 break;
             }
             case 0x23: {//S-type (sw, sh, sb)
