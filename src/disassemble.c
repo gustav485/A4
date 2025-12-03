@@ -14,9 +14,6 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
         "s8",   "s9", "s10", "s11", "t3", "t4", "t5", "t6"
     };
 
-    int32_t regs[32] = {0};
-    bool done = false;
-
     u_int32_t opcode = instruction & 0x7F;
     u_int32_t rd  = (instruction >> 7) & 0x1F;
     u_int32_t rs1 = (instruction >> 15) & 0x1F;
@@ -160,7 +157,6 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu
                 int32_t imm = instruction >> 20;
-                uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //lb
                         snprintf(result, buf_size, "lb %s %d(%s)", regname[rd], imm, regname[rs1]);
@@ -187,26 +183,22 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
             }
             case 0x67: {//jalr
                 int32_t imm = (int32_t)instruction >> 20;           // sign-extendet offset
-                uint32_t target = regs[rs1] + imm;
-                target &= ~1;                                       // clear bit 0 (RISC-V kræver det)
-
                 snprintf(result, buf_size, "jalr %s %d(%s)", regname[rd], imm, regname[rs1]);
                 break;
             }
             case 0x23: {//S-type (sw, sh, sb)
                 int32_t imm = ((int32_t)(instruction << 12) >> 20);
-                uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //sb
-                            memory_wr_b(mem, address, regs[rs2] & 0xFF);
+                        snprintf(result, buf_size, "sb %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x1: { //sh
-                            memory_wr_h(mem, address, regs[rs2] & 0xFFFF);                
+                        snprintf(result, buf_size, "sh %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                     case 0x2: { //sw
-                            memory_wr_w(mem, address, regs[rs2]);                        
+                        snprintf(result, buf_size, "sw %s %d(%s)", regname[rd], imm, regname[rs1]);
                         break;
                     }
                 }
@@ -226,33 +218,27 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
 
                 switch (funct3) {
                     case 0x0: { //beq
-                        if (regs[rs1] == regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "beq %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                     case 0x1: { //bne
-                        if (regs[rs1] != regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "bne %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                     case 0x4: { //blt
-                        if ((int32_t)regs[rs1] < (int32_t)regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "blt %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                     case 0x5: { //bge
-                        if ((int32_t)regs[rs1] >= (int32_t)regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "bge %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                     case 0x6: { //bltu
-                        if ((uint32_t)regs[rs1] < (uint32_t)regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "bltu %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                     case 0x7: { //bgeu
-                        if ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2])
-                            program_counter += immB;
+                        snprintf(result, buf_size, "bgeu %s %s %d", regname[rd], regname[rs1], immB);
                         break;
                     }
                 }
@@ -267,33 +253,24 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
 
                 if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
 
-                if (rd != 0) {
-                    regs[rd] = program_counter + 4;   // ← returadresse!
-                }
-
-                program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
-
+                snprintf(result, buf_size, "jal %s %d", regname[rd], imm);
                 break;
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
-                if (rd != 0){
-                    regs[rd] = program_counter + imm;
-                }
+                snprintf(result, buf_size, "auipc %s %d", regname[rd], imm);
+
                 break;
             }
             case 0x37: {//lui
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000);
-                if (rd != 0){
-                    regs[rd] = imm;
-                }
+                snprintf(result, buf_size, "lui %s %d", regname[rd], imm);
+
                 break;
             }
             default: {
                 printf("Ukendt opcode: 0x%x\n", opcode);
-                done = true;
                 break;
             }
         }
-        regs[0] = 0;
 }
