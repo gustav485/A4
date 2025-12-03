@@ -22,58 +22,75 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
         instruction_count++;
         switch(opcode) {
-            case 0x73: //ecall/ebreak
+            case 0x73: {//ecall/ebreak
                 systemkald = regs[17];
                 struct Stat stat;
                 stat.insns = instruction_count;
-                    switch (systemkald){
-                        case 0:                     
+                    switch (systemkald) {
+                        case 0: {
                             return stat;
-                        case 1:
+                        }
+                        case 1: {
                             regs[10] = getchar();
                             break;
-                        case 2:
+                        }
+                        case 2: {
                             putchar(regs[10]);
                             break;
+                        }
                         case 3:
                         case 93:{
                             return stat;
                         }
-                        default:
+                        default: {
                             printf("Error, ukendt systemkald: %u", systemkald);
                             return stat;
+                        }
                     }
                 break;
+            }
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
                 switch (funct3) {
                     case 0x0: {
                         if (funct7 == 0x0) { //add
-                            regs[rd] = regs[rs1] + regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] + regs[rs2];
+                            }
                         }
                         else if (funct7 == 0x1) { //mul
-                            regs[rd] = regs[rs1] * regs[rs2];                            
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] * regs[rs2];
+                            }
                         }
                         else if (funct7 == 0x20) { //sub
-                            regs[rd] = regs[rs1] - regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] - regs[rs2];
+                            }
                         }
                         break;
                     }
                     case 0x1:{ //sll
                         if (funct7 == 0x0){ //sll
-                            regs[rd] = regs[rs1] << regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] << regs[rs2];
+                            }
                             break;
                         }
                         else if (funct7 == 0x1) { //mulh
-                            regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = (u_int32_t) regs[rs1] * (u_int32_t) regs[rs2];
+                            }
                             break;
                         }
                     }
                     case 0x2: { 
-                        if (funct7 == 0x0){ //slt
-                            regs[rd] = (regs[rs1] < regs[rs2]);
+                        if (funct7 == 0x0) { //slt
+                            if (rd !=0) {
+                                regs[rd] = (regs[rs1] < regs[rs2]);
+                            }
                             break;
                         }
-                        else if (funct7 == 0x1){ //mulhsu
+                        else if (funct7 == 0x1) { //mulhsu
                             int64_t a = (int64_t)(int32_t)regs[rs1];
                             int64_t b = (int64_t)(uint32_t)regs[rs2];
                             int64_t result = a * b;
@@ -89,7 +106,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                                 regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
                             }
                         }
-                        else if (funct7 == 0x1){ //mulhu
+                        else if (funct7 == 0x1) { //mulhu
                             uint64_t a = (uint64_t)(uint32_t)regs[rs1];
                             uint64_t b = (uint64_t)(uint32_t)regs[rs2];
                             uint64_t result = a * b;
@@ -100,55 +117,73 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     }
                     case 0x4: { 
                         if (funct7 == 0x0) { //xor
-                            regs[rd] = regs[rs1] ^ regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] ^ regs[rs2];
+                            }
                             break;
                         }
-                        else if (funct7 == 0x1){ //div
-                            if (regs[rs2] == 0) {
-                                regs[rd] = -1;
-                            }
-                            else {
-                                regs[rd] = regs[rs1] / regs[rs2];
+                        else if (funct7 == 0x1) { //div
+                            if (rd != 0) {
+                                if (regs[rs2] == 0) {
+                                    regs[rd] = -1;
+                                }
+                                else {
+                                    regs[rd] = regs[rs1] / regs[rs2];
+                                }
                             }
                             break;
                         }
                     }
                     case 0x5: {
-                        if (funct7 == 0x0){ //srl
-                            regs[rd] = regs[rs1] >> regs[rs2];
-                            break;
-                        }
-                        else if (funct7 == 0x20){ //sra
-                            regs[rd] = regs[rs1] >> regs[rs2];
-                            break;
-                        }
-                        else if (funct7 == 0x1){ //divu
-                            if (regs[rs2] == 0) {
-                                regs[rd] = -1;
+                        if (funct7 == 0x0) { //srl
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] >> regs[rs2];
                             }
-                            else {
-                            regs[rd] = (uint32_t)regs[rs1] / (uint32_t)regs[rs2];
+                            break;
+                        }
+                        else if (funct7 == 0x20) { //sra
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] >> regs[rs2];
+                            }
+                            break;
+                        }
+                        else if (funct7 == 0x1) { //divu
+                            if (rd != 0) {
+                                if (regs[rs2] == 0) {
+                                    regs[rd] = -1;
+                                }
+                                else {
+                                    regs[rd] = (uint32_t)regs[rs1] / (uint32_t)regs[rs2];
+                                }
                             }
                             break;
                         }
                     }
                     case 0x6: { //
                         if (funct7 == 0x0) { //or
-                            regs[rd] = regs[rs1] | regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] | regs[rs2];
+                            }
                             break;
                         }
-                        else if (funct7 == 0x1){ //rem
-                            regs[rd] = regs[rs1] % regs[rs2];
+                        else if (funct7 == 0x1) { //rem
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] % regs[rs2];
+                            }
                             break;
                         }
                     }
                     case 0x7: {
                         if (funct7 == 0x0) { //and
-                            regs[rd] = regs[rs1] & regs[rs2];
+                            if (rd != 0) {
+                                regs[rd] = regs[rs1] & regs[rs2];
+                            }
                             break;
                         }
-                        else if (funct7 == 0x1){ //remu
-                            regs[rd] = (uint32_t)regs[rs1] % (uint32_t)regs[rs2];
+                        else if (funct7 == 0x1) { //remu
+                            if (rd != 0) {
+                                regs[rd] = (uint32_t)regs[rs1] % (uint32_t)regs[rs2];
+                            }
                             break;
                         }
                     }
@@ -160,49 +195,58 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 uint32_t shamt = immI & 0x1F;
                 switch (funct3) {
                     case 0x0: { //addi
-                        if (rd != 0)
+                        if (rd != 0) {
                             regs[rd] = regs[rs1] + immI;
+                        }
                         break;
                     }
                     case 0x1: { //slli
-                        if (rd != 0)
+                        if (rd != 0) {
                             regs[rd] = regs[rs1] << shamt;
+                        }
                         break;
                     }
                     case 0x2: { //slti
-                        if (rd != 0)
-                            regs[rd] =  (regs[rs1] < immI) ? 1 : 0;                    
+                        if (rd != 0) {
+                            regs[rd] = (regs[rs1] < immI) ? 1 : 0;
+                        }
                         break;
                     }
                     case 0x3: { //sltiu
-                        if (rd != 0)
-                            regs[rd] =  ((uint32_t)regs[rs1] < (uint32_t)immI) ? 1 : 0;  
+                        if (rd != 0) {
+                            regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)immI) ? 1 : 0;
+                        }
                         break;
                     }
                     case 0x4: { //xori
-                        if (rd != 0)
+                        if (rd != 0) {
                             regs[rd] = regs[rs1] ^ immI;
+                        }
                         break;
                     }
                     case 0x5:{
                         if (funct7 == 0x0){ //srli
-                            if (rd != 0)
+                            if (rd != 0) {
                                 regs[rd] = ((uint32_t)regs[rs1]) >> shamt;
+                            }
                         }
                         else if (funct7 == 0x20){ //srai
-                            if (rd != 0)
+                            if (rd != 0) {
                                 regs[rd] = regs[rs1] >> shamt;
+                            }
                         }
                         break;
                     }
                     case 0x6: { //ori
-                        if (rd != 0)
+                        if (rd != 0) {
                             regs[rd] = regs[rs1] | immI;
+                        }
                         break;
                     }
                     case 0x7: { //andi
-                        if (rd != 0)
+                        if (rd != 0) {
                             regs[rd] = regs[rs1] & immI;
+                        }
                         break;
                     }
                 }
@@ -212,31 +256,31 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //lb
-                        if (rd != 0){
+                        if (rd != 0) {
                             regs[rd] = (int8_t)memory_rd_b(mem, address);
                         }
                         break;
                     }
                     case 0x1: { //lh
-                        if (rd != 0){
+                        if (rd != 0) {
                             regs[rd] = (int16_t)memory_rd_h(mem, address);
                         }
                         break;
                     }
                     case 0x2: { //lw
-                        if (rd != 0){
+                        if (rd != 0) {
                             regs[rd] = memory_rd_w(mem, address);
                         }
                         break;
                     }
                     case 0x4: { //lbu
-                        if (rd != 0){
+                        if (rd != 0) {
                             regs[rd] = memory_rd_b(mem, address) & 0xFF;
                         }
                         break;
                     }
                     case 0x5: { //lhu
-                        if (rd != 0){
+                        if (rd != 0) {
                             regs[rd] = memory_rd_h(mem, address) & 0xFFFF;
                         }
                         break;
@@ -338,14 +382,14 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
-                if (rd != 0){
+                if (rd != 0) {
                     regs[rd] = program_counter + imm;
                 }
                 break;
             }
             case 0x37: {//lui
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000);
-                if (rd != 0){
+                if (rd != 0) {
                     regs[rd] = imm;
                 }
                 break;
