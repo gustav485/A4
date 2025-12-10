@@ -2,13 +2,69 @@
 #include "simulate.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
+
+typedef struct {
+    int size;             // Entries fra (256, 1K, 4K og 16K)
+    uint8_t *table;       // Tabel
+    uint64_t errors;      //
+} Predictor;
+
+void handle_prediction(Predictor *p, uint32_t index, bool actual_taken) {
+    uint8_t state = p->table[index];
+    bool predicted_taken = (state >= 2);
+
+    // Tæller fejl
+    if (predicted_taken != actual_taken) {
+        p->errors++;
+    }
+
+    // Opdater 2-bit counter (saturating math)
+    if (actual_taken) {
+        if (state < 3) p->table[index]++;
+    } else {
+        if (state > 0) p->table[index]--;
+    }
+}
 
 struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
     int32_t regs[32] = {0};
     uint32_t program_counter = start_addr;
     long int instruction_count = 0;
     bool done = false;
+
+    //Tæller
+    uint64_t total_branches = 0;
+    uint64_t mispredicts_nt = 0;
+    uint64_t mispredicts_btfnt = 0;
+
+    int sizes[] = {256, 1024, 4096, 16384};
+    int num_sizes = 4;
+
+    // Allocating memory
+    Predictor bimodal_preds[4];
+    Predictor gshare_preds[4];
+    uint32_t gshare_ghrs[4] = {0};
+
+    for (int i = 0; i < num_sizes; i++) {
+        // Bimodal setup
+        bimodal_preds[i].size = sizes[i];
+        bimodal_preds[i].errors = 0;
+        bimodal_preds[i].table = (uint8_t*)calloc(sizes[i], sizeof(uint8_t));
+        // sætter som weakly not taken 
+        for (int k = 0; k < sizes[i]; k++) {
+            bimodal_preds[i].table[k] = 1;
+        }
+
+        // gShare setup
+        gshare_preds[i].size = sizes[i];
+        gshare_preds[i].errors = 0;
+        gshare_preds[i].table = (uint8_t*)calloc(sizes[i], sizeof(uint8_t));
+        for (int k = 0; k < sizes[i]; k++) {
+            gshare_preds[i].table[k] = 1;
+        }
+    }
 
     while (!done) {
         uint32_t instruction = memory_rd_w(mem, program_counter);
@@ -21,11 +77,19 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         uint32_t systemkald;
 
         instruction_count++;
+
         switch(opcode) {
             case 0x73: {//ecall/ebreak
                 systemkald = regs[17];
                 struct Stat stat;
                 stat.insns = instruction_count;
+
+                // Tjek om afslut
+                bool exiting = (systemkald == 0 || systemkald == 3 || systemkald == 93);
+                if (exiting) {
+                    //fGHJK
+                }
+
                     switch (systemkald) {
                         case 0: {
                             return stat;
@@ -96,6 +160,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             int64_t result = a * b;
                             if (rd != 0) {
                                 regs[rd] = (int32_t)(result >> 32);  // høje 32 bit
+                                break;
                             }
                             break;
                         }
@@ -104,6 +169,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         if (funct7 == 0x0) { //sltu
                             if (rd != 0) {
                                 regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
+                                break;
                             }
                         }
                         else if (funct7 == 0x1) { //mulhu
@@ -329,37 +395,70 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 immB |= (imm4_1 << 1);
                 immB |= (imm11 << 11);
 
+                bool taken = false;
+
                 switch (funct3) {
                     case 0x0: { //beq
-                        if (regs[rs1] == regs[rs2])
-                            program_counter += immB;
+                        taken = (regs[rs1] == regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
                     case 0x1: { //bne
-                        if (regs[rs1] != regs[rs2])
-                            program_counter += immB;
+                        taken = (regs[rs1] != regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
                     case 0x4: { //blt
-                        if ((int32_t)regs[rs1] < (int32_t)regs[rs2])
-                            program_counter += immB;
+                        taken = ((int32_t)regs[rs1] < (int32_t)regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
                     case 0x5: { //bge
-                        if ((int32_t)regs[rs1] >= (int32_t)regs[rs2])
-                            program_counter += immB;
+                        taken = ((int32_t)regs[rs1] >= (int32_t)regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
                     case 0x6: { //bltu
-                        if ((uint32_t)regs[rs1] < (uint32_t)regs[rs2])
-                            program_counter += immB;
+                        taken = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
                     case 0x7: { //bgeu
-                        if ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2])
-                            program_counter += immB;
+                        taken = ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2]);
+                            //program_counter += immB;
                         break;
                     }
+                }
+                total_branches++;
+                if (taken) {
+                    mispredicts_nt++; //NT fajler når hop bliver taget
+                }
+                // BTFNT logic
+                bool backward = (immB < 0);
+                bool btfnt_prediction = backward; // Gæt taken hvis backward
+                if (btfnt_prediction != taken) {
+                    mispredicts_btfnt++;
+                }
+
+                // dynamic predictiors
+                for (int i = 0; i < 4; i++) {
+                    uint32_t pc_idx = program_counter >> 2; // Fjerner de to null-bits
+                    int mask = sizes[i] - 1;
+
+                    // Bimodal logic
+                    uint32_t b_idx = pc_idx & mask;
+                    handle_prediction(&bimodal_preds[i], b_idx, taken);
+
+                    // gShare logic
+                    uint32_t g_idx = (pc_idx ^ gshare_ghrs[i]) & mask;
+                    handle_prediction(&gshare_preds[i], g_idx, taken);
+
+                    // Opdater Global History Register for gShare
+                    gshare_ghrs[i] = (gshare_ghrs[i] << 1) | (taken ? 1 : 0);
+                }
+
+                if (taken) {
+                    program_counter += immB;
                 }
                 break;
             }
