@@ -8,10 +8,8 @@
 void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_size, struct symbols* symbols)
 {
     static const char* regname[32] = {
-        "zero", "ra", "sp",  "gp",  "tp", "t0", "t1", "t2",
-        "s0",   "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
-        "a6",   "a7", "s2",  "s3",  "s4", "s5", "s6", "s7",
-        "s8",   "s9", "s10", "s11", "t3", "t4", "t5", "t6"
+        "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
+        "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
     };
 
     uint32_t opcode = instruction & 0x7F;
@@ -22,6 +20,10 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
     uint32_t funct7 = (instruction >> 25) & 0x7F;
 
     switch(opcode) {
+            case 0x73: {
+                snprintf(result, buf_size, "ecall");
+                break;
+            }
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
                 switch (funct3) {
                     case 0x0: {
@@ -133,7 +135,7 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                         break;
                     }
                     case 0x4: { //xori
-                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
+                        snprintf(result, buf_size, "xori %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                     case 0x5:{
@@ -141,19 +143,20 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                             snprintf(result, buf_size, "srli %s %s %d", regname[rd], regname[rs1], shamt);
                         }
                         else if (funct7 == 0x20){ //srai
-                            snprintf(result, buf_size, "srli %s %s %d", regname[rd], regname[rs1], shamt);                        
+                            snprintf(result, buf_size, "srai %s %s %d", regname[rd], regname[rs1], shamt);                        
                         }
                         break;
                     }
                     case 0x6: { //ori
-                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
+                        snprintf(result, buf_size, "ori %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                     case 0x7: { //andi
-                        snprintf(result, buf_size, "xor %s %s %d", regname[rd], regname[rs1], immI);
+                        snprintf(result, buf_size, "andi %s %s %d", regname[rd], regname[rs1], immI);
                         break;
                     }
                 }
+                break;
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu
                 int32_t imm = instruction >> 20;
@@ -187,18 +190,19 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                 break;
             }
             case 0x23: {//S-type (sw, sh, sb)
-                int32_t imm = ((int32_t)(instruction << 12) >> 20);
+                int32_t imm = ((instruction >> 7) & 0x1F) | (((int32_t)instruction << 12) >> 20);
+                if (imm & 0x800) imm |= 0xFFFFF000;  // sign-extension of bit 11
                 switch (funct3) {
                     case 0x0: { //sb
-                        snprintf(result, buf_size, "sb %s %d(%s)", regname[rd], imm, regname[rs1]);
+                        snprintf(result, buf_size, "sb %s %d(%s)", regname[rs2], imm, regname[rs1]);
                         break;
                     }
                     case 0x1: { //sh
-                        snprintf(result, buf_size, "sh %s %d(%s)", regname[rd], imm, regname[rs1]);
+                        snprintf(result, buf_size, "sh %s %d(%s)", regname[rs2], imm, regname[rs1]);
                         break;
                     }
                     case 0x2: { //sw
-                        snprintf(result, buf_size, "sw %s %d(%s)", regname[rd], imm, regname[rs1]);
+                        snprintf(result, buf_size, "sw %s %d(%s)", regname[rs2], imm, regname[rs1]);
                         break;
                     }
                 }
@@ -215,30 +219,33 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                 immB |= (imm10_5 << 5);
                 immB |= (imm4_1 << 1);
                 immB |= (imm11 << 11);
+                if (immB & 0x1000) immB |= 0xFFFFF000;  // sign-extension of bit 12
+
+                uint32_t target = addr + immB; 
 
                 switch (funct3) {
                     case 0x0: { //beq
-                        snprintf(result, buf_size, "beq %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "beq %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                     case 0x1: { //bne
-                        snprintf(result, buf_size, "bne %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "bne %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                     case 0x4: { //blt
-                        snprintf(result, buf_size, "blt %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "blt %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                     case 0x5: { //bge
-                        snprintf(result, buf_size, "bge %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "bge %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                     case 0x6: { //bltu
-                        snprintf(result, buf_size, "bltu %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "bltu %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                     case 0x7: { //bgeu
-                        snprintf(result, buf_size, "bgeu %s %s %d", regname[rd], regname[rs1], immB);
+                        snprintf(result, buf_size, "bgeu %s %s %d", regname[rs1], regname[rs2], target);
                         break;
                     }
                 }
@@ -246,30 +253,32 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
             }
             case 0x6F: { //jal
                 int32_t imm = 
-                        ((instruction >> 11) & 0x00100000) |   // bit 20 (sign)
-                        ((instruction >> 20) & 0x00000800) |   // bit 11
-                        ((instruction >>  0) & 0x000FF000) |   // bit 19:12
-                        ((instruction >> 21) & 0x000007FE);    // bit 10:1
+                    ((instruction & 0x80000000) >> 11) |  // imm[20] -> bit 20
+                    ((instruction & 0x7FE00000) >> 20) |  // imm[10:1]
+                    ((instruction & 0x00100000) >> 9)  |  // imm[11]
+                    ((instruction & 0x000FF000));         // imm[19:12]
 
-                if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
+                if (imm & 0x100000) imm |= 0xFFF00000;  // sign-extension
+                uint32_t target = addr + imm;
 
-                snprintf(result, buf_size, "jal %s %d", regname[rd], imm);
+                if (rd == 0){
+                    snprintf(result, buf_size, "j 0x%x", target);
+                }
+                else{
+                    snprintf(result, buf_size, "jal %s 0x%x", regname[rd], target);
+                }
                 break;
             }
             case 0x17: { //auipc
-                int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
-                snprintf(result, buf_size, "auipc %s %d", regname[rd], imm);
-
+                snprintf(result, buf_size, "auipc %s 0x%x", regname[rd], instruction & 0xFFFFF000);
                 break;
             }
             case 0x37: {//lui
-                int32_t imm = (int32_t)(instruction & 0xFFFFF000);
-                snprintf(result, buf_size, "lui %s %d", regname[rd], imm);
-
+                snprintf(result, buf_size, "lui %s 0x%x", regname[rd], instruction & 0xFFFFF000);
                 break;
             }
             default: {
-                printf("Ukendt opcode: 0x%x\n", opcode);
+                snprintf(result, buf_size, "what the helly: 0x%08x 0x%x", instruction);
                 break;
             }
         }

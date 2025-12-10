@@ -8,8 +8,8 @@
 typedef struct {
     int size;             // Entries fra (256, 1K, 4K og 16K)
     uint8_t *table;       // Tabel
-    uint64_t errors;      //
-} Predictor;
+    uint64_t errors;      
+}Predictor;
 
 void handle_prediction(Predictor *p, uint32_t index, bool actual_taken) {
     uint8_t state = p->table[index];
@@ -76,6 +76,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         uint32_t funct7 = (instruction >> 25) & 0x7F;
         uint32_t systemkald;
 
+        bool pc_updated = false;
+
         instruction_count++;
 
         switch(opcode) {
@@ -87,7 +89,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 // Tjek om afslut
                 bool exiting = (systemkald == 0 || systemkald == 3 || systemkald == 93);
                 if (exiting) {
-                    //fGHJK
+                    printf("NT miss: %d, BTFNT miss: %d\n", mispredicts_nt, mispredicts_btfnt);
+                    printf("Total branch: %d \n", total_branches);
                 }
 
                     switch (systemkald) {
@@ -362,6 +365,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     regs[rd] = program_counter + 4;
                 }
                 program_counter = target - 4;                       // -4 fordi vi tilføjer +4 til sidst
+                pc_updated = true;
                 break;
             }
             case 0x23: {//S-type (sw, sh, sb)
@@ -384,47 +388,49 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             case 0x63: {//B-type (beq, bne, blt, bge, bltu, bgeu)
-                int32_t imm12 = (instruction >> 31) & 0x1;
-                int32_t imm10_5 = (instruction >> 25) & 0x3F;
-                int32_t imm4_1 = (instruction >> 8) & 0xF;
-                int32_t imm11 = (instruction >> 7) & 0x1;
-
-                int32_t immB = 0;
-                immB |= (imm12 << 12);
-                immB |= (imm10_5 << 5);
-                immB |= (imm4_1 << 1);
-                immB |= (imm11 << 11);
+                int32_t immB = ((instruction >> 19) & 0x1000) |   // bit 12
+                               ((instruction << 4)  & 0x0800) |   // bit 11
+                               ((instruction >> 20) & 0x07E0) |   // bits 10:5
+                               ((instruction >> 7)  & 0x001E);    // bits 4:1
+                if (immB & 0x1000) immB |= 0xFFFFF000; // sign-extend bit 12
+                immB <<= 1; // fordi offset er i bytes, og bit 0 altid 0
 
                 bool taken = false;
 
                 switch (funct3) {
                     case 0x0: { //beq
                         taken = (regs[rs1] == regs[rs2]);
+                        printf("hello from beq\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x1: { //bne
                         taken = (regs[rs1] != regs[rs2]);
+                        printf("hello from bne\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x4: { //blt
                         taken = ((int32_t)regs[rs1] < (int32_t)regs[rs2]);
+                        printf("hello from blt\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x5: { //bge
                         taken = ((int32_t)regs[rs1] >= (int32_t)regs[rs2]);
+                        printf("hello from bge\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x6: { //bltu
                         taken = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]);
+                        printf("hello from bltu\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x7: { //bgeu
                         taken = ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2]);
+                        printf("hello from bgeu\n");
                             //program_counter += immB;
                         break;
                     }
@@ -460,6 +466,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 if (taken) {
                     program_counter += immB;
                 }
+                pc_updated = true;
                 break;
             }
             case 0x6F: { //jal
@@ -476,7 +483,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 }
 
                 program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
-
+                pc_updated = true;
                 break;
             }
             case 0x17: { //auipc
@@ -500,6 +507,8 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             }
         }
         regs[0] = 0;
-        program_counter += 4;
+        if (!pc_updated) {
+            program_counter += 4;
+        }
     }
 }
