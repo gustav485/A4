@@ -364,12 +364,19 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 if (rd != 0) {
                     regs[rd] = program_counter + 4;
                 }
-                program_counter = target - 4;                       // -4 fordi vi tilføjer +4 til sidst
-                pc_updated = true;
-                break;
+                program_counter = target;                       // -4 fordi vi tilføjer +4 til sidst
+                regs[0] = 0;
+                continue;
             }
             case 0x23: {//S-type (sw, sh, sb)
-                int32_t imm = ((int32_t)(instruction << 12) >> 20);
+                //int32_t imm = ((int32_t)(instruction << 12) >> 20);
+                int32_t imm11_5 = (instruction >> 25) & 0x7F;
+                int32_t imm4_0  = (instruction >> 7) & 0x1F;
+                int32_t imm = (imm11_5 << 5) | imm4_0;
+                
+                // Sign-extend fra 12-bit til 32-bit
+                if (imm & 0x800) imm |= 0xFFFFF000;
+
                 uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //sb
@@ -393,44 +400,44 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                                ((instruction >> 20) & 0x07E0) |   // bits 10:5
                                ((instruction >> 7)  & 0x001E);    // bits 4:1
                 if (immB & 0x1000) immB |= 0xFFFFF000; // sign-extend bit 12
-                immB <<= 1; // fordi offset er i bytes, og bit 0 altid 0
+                //immB <<= 1; // fordi offset er i bytes, og bit 0 altid 0
 
                 bool taken = false;
 
                 switch (funct3) {
                     case 0x0: { //beq
                         taken = (regs[rs1] == regs[rs2]);
-                        printf("hello from beq\n");
+                        //printf("hello from beq\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x1: { //bne
                         taken = (regs[rs1] != regs[rs2]);
-                        printf("hello from bne\n");
+                        //printf("hello from bne\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x4: { //blt
                         taken = ((int32_t)regs[rs1] < (int32_t)regs[rs2]);
-                        printf("hello from blt\n");
+                        //printf("hello from blt\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x5: { //bge
                         taken = ((int32_t)regs[rs1] >= (int32_t)regs[rs2]);
-                        printf("hello from bge\n");
+                        //printf("hello from bge\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x6: { //bltu
                         taken = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]);
-                        printf("hello from bltu\n");
+                        //printf("hello from bltu\n");
                             //program_counter += immB;
                         break;
                     }
                     case 0x7: { //bgeu
                         taken = ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2]);
-                        printf("hello from bgeu\n");
+                        //printf("hello from bgeu\n");
                             //program_counter += immB;
                         break;
                     }
@@ -465,26 +472,36 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
                 if (taken) {
                     program_counter += immB;
+                    regs[0] = 0;
+                    continue;
                 }
-                pc_updated = true;
                 break;
             }
             case 0x6F: { //jal
-                int32_t imm = 
-                        ((instruction >> 11) & 0x00100000) |   // bit 20 (sign)
-                        ((instruction >> 20) & 0x00000800) |   // bit 11
-                        ((instruction >>  0) & 0x000FF000) |   // bit 19:12
-                        ((instruction >> 21) & 0x000007FE);    // bit 10:1
+        //        int32_t imm = 
+        //                ((instruction >> 11) & 0x00100000) |   // bit 20 (sign)
+        //                ((instruction >> 20) & 0x00000800) |   // bit 11
+        //                ((instruction >>  0) & 0x000FF000) |   // bit 19:12
+        //                ((instruction >> 21) & 0x000007FE);    // bit 10:1
+        //                if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
+                int32_t imm20    = (instruction >> 31) & 0x1;
+                int32_t imm10_1  = (instruction >> 21) & 0x3FF;
+                int32_t imm11    = (instruction >> 20) & 0x1;
+                int32_t imm19_12 = (instruction >> 12) & 0xFF;
 
-                if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
+                int32_t imm = (imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1);
+
+                if (imm & 0x100000) {
+                    imm |= 0xFFE00000;
+                }
 
                 if (rd != 0) {
                     regs[rd] = program_counter + 4;   // ← returadresse!
                 }
 
-                program_counter = program_counter + imm - 4;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
-                pc_updated = true;
-                break;
+                program_counter += imm;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
+                regs[0] = 0;
+                continue;
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
@@ -507,8 +524,6 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
             }
         }
         regs[0] = 0;
-        if (!pc_updated) {
-            program_counter += 4;
-        }
+        program_counter += 4;
     }
 }
