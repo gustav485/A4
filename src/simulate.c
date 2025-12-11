@@ -2,69 +2,18 @@
 #include "simulate.h"
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include "disassemble.h"
 
-typedef struct {
-    int size;             // Entries fra (256, 1K, 4K og 16K)
-    uint8_t *table;       // Tabel
-    uint64_t errors;      
-}Predictor;
 
-void handle_prediction(Predictor *p, uint32_t index, bool actual_taken) {
-    uint8_t state = p->table[index];
-    bool predicted_taken = (state >= 2);
-
-    // Tæller fejl
-    if (predicted_taken != actual_taken) {
-        p->errors++;
-    }
-
-    // Opdater 2-bit counter (saturating math)
-    if (actual_taken) {
-        if (state < 3) p->table[index]++;
-    } else {
-        if (state > 0) p->table[index]--;
-    }
-}
-
-struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
+struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols, int predictor_type) {
     int32_t regs[32] = {0};
     uint32_t program_counter = start_addr;
     long int instruction_count = 0;
     bool done = false;
-
-    //Tæller
-    uint64_t total_branches = 0;
-    uint64_t mispredicts_nt = 0;
-    uint64_t mispredicts_btfnt = 0;
-
-    int sizes[] = {256, 1024, 4096, 16384};
-    int num_sizes = 4;
-
-    // Allocating memory
-    Predictor bimodal_preds[4];
-    Predictor gshare_preds[4];
-    uint32_t gshare_ghrs[4] = {0};
-
-    for (int i = 0; i < num_sizes; i++) {
-        // Bimodal setup
-        bimodal_preds[i].size = sizes[i];
-        bimodal_preds[i].errors = 0;
-        bimodal_preds[i].table = (uint8_t*)calloc(sizes[i], sizeof(uint8_t));
-        // sætter som weakly not taken 
-        for (int k = 0; k < sizes[i]; k++) {
-            bimodal_preds[i].table[k] = 1;
-        }
-
-        // gShare setup
-        gshare_preds[i].size = sizes[i];
-        gshare_preds[i].errors = 0;
-        gshare_preds[i].table = (uint8_t*)calloc(sizes[i], sizeof(uint8_t));
-        for (int k = 0; k < sizes[i]; k++) {
-            gshare_preds[i].table[k] = 1;
-        }
-    }
+    long int branch_count = 0;
+    long int mispredict_count = 0;
+    uint32_t last_pc = start_addr - 4;  // så første instruktion får ">"
 
     while (!done) {
         uint32_t instruction = memory_rd_w(mem, program_counter);
@@ -75,58 +24,61 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         uint32_t rs2 = (instruction >> 20) & 0x1F;
         uint32_t funct7 = (instruction >> 25) & 0x7F;
         uint32_t systemkald;
-
-        bool pc_updated = false;
+        //printf("insn %ld: pc=0x%08x instr=0x%08x opcode=0x%x\n",instruction_count, program_counter, instruction, opcode);
 
         instruction_count++;
+        bool taken = false;
+
+        if (log_file) {
+            char buf[128];
+            disassemble(program_counter, instruction, buf, sizeof(buf), symbols);
+
+            fprintf(log_file, "%6ld %c %08x : %08x   %-30s",
+                    instruction_count,
+                    (program_counter == last_pc + 4 ? ' ' : ' '),
+                    program_counter,
+                    instruction,
+                    buf);
+
+            fprintf(log_file, "\n");
+        }
 
         switch(opcode) {
-            case 0x73: {//ecall/ebreak
-                systemkald = regs[17];
-                struct Stat stat;
-                stat.insns = instruction_count;
+            case 0x73: { // ecall / ebreak
+                if (instruction == 0x00000073) { // ecall
+                    uint32_t call = regs[17]; // a7
 
-                // Tjek om afslut
-                bool exiting = (systemkald == 0 || systemkald == 3 || systemkald == 93);
-                if (exiting) {
-                    printf("NT miss: %d, BTFNT miss: %d\n", mispredicts_nt, mispredicts_btfnt);
-                    printf("Total branch: %d \n", total_branches);
-                }
-
-                    switch (systemkald) {
-                        case 0: {
-                            return stat;
-                        }
-                        case 1: {
-                            regs[10] = getchar();
-                            break;
-                        }
-                        case 2: {
-                            putchar(regs[10]);
-                            break;
-                        }
-                        case 3:
-                        case 93:{
-                            return stat;
-                        }
-                        default: {
-                            printf("Error, ukendt systemkald: %u", systemkald);
-                            return stat;
-                        }
+                    if (call == 1) { // getchar
+                        int c = getchar();
+                        regs[10] = (c == EOF) ? -1 : c;
                     }
+                    else if (call == 2) { // putchar
+                        putchar(regs[10]);
+                        fflush(stdout);
+                    }
+                    else if (call == 3 || call == 93) { // exit
+                        fflush(stdout);
+                        struct Stat stat = {
+                            .insns          = instruction_count,
+                            .branches       = branch_count,
+                            .mispredictions = mispredict_count
+                        };
+                        return stat;
+                    }
+                }
                 break;
             }
             case 0x33: {//R-type (add, sub, and, or, slt, mul …)
                 switch (funct3) {
                     case 0x0: {
-                        if (funct7 == 0x0) { //add
+                        if (funct7 == 0x00) { //add
                             if (rd != 0) {
                                 regs[rd] = regs[rs1] + regs[rs2];
                             }
                         }
                         else if (funct7 == 0x1) { //mul
                             if (rd != 0) {
-                                regs[rd] = regs[rs1] * regs[rs2];
+                                regs[rd] = (int32_t)((int64_t)regs[rs1] * regs[rs2]);
                             }
                         }
                         else if (funct7 == 0x20) { //sub
@@ -163,7 +115,6 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             int64_t result = a * b;
                             if (rd != 0) {
                                 regs[rd] = (int32_t)(result >> 32);  // høje 32 bit
-                                break;
                             }
                             break;
                         }
@@ -172,7 +123,6 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         if (funct7 == 0x0) { //sltu
                             if (rd != 0) {
                                 regs[rd] = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]) ? 1 : 0;
-                                break;
                             }
                         }
                         else if (funct7 == 0x1) { //mulhu
@@ -228,20 +178,19 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                             break;
                         }
                     }
-                    case 0x6: { //
-                        if (funct7 == 0x0) { //or
-                            if (rd != 0) {
-                                regs[rd] = regs[rs1] | regs[rs2];
+                    case 0x6: // or / rem
+                            if (funct7 == 0x00) { // or
+                                if (rd) regs[rd] = regs[rs1] | regs[rs2];
+                            } else if (funct7 == 0x01) { // rem 
+                                if (rd) {
+                                    if (regs[rs2] == 0) {
+                                        regs[rd] = regs[rs1];                
+                                    } else {
+                                        regs[rd] = (int32_t)regs[rs1] % (int32_t)regs[rs2];
+                                    }
+                                }
                             }
                             break;
-                        }
-                        else if (funct7 == 0x1) { //rem
-                            if (rd != 0) {
-                                regs[rd] = regs[rs1] % regs[rs2];
-                            }
-                            break;
-                        }
-                    }
                     case 0x7: {
                         if (funct7 == 0x0) { //and
                             if (rd != 0) {
@@ -301,7 +250,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         }
                         else if (funct7 == 0x20){ //srai
                             if (rd != 0) {
-                                regs[rd] = regs[rs1] >> shamt;
+                                regs[rd] = (int32_t)regs[rs1] >> shamt;
                             }
                         }
                         break;
@@ -319,9 +268,10 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         break;
                     }
                 }
+                break;
             }
             case 0x03: {//l-type lw, lh, lb, lhu, lbu                   //Vi sign extender de forskellige værdier. 
-                int32_t imm = instruction >> 20;
+                int32_t imm = ((int32_t)instruction) >> 20;
                 uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //lb
@@ -357,26 +307,19 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 }
                 break;
             }
-            case 0x67: {//jalr
-                int32_t imm = (int32_t)instruction >> 20;           // sign-extendet offset
-                uint32_t target = regs[rs1] + imm;
-                target &= ~1;                                       // clear bit 0 (RISC-V kræver det)
+            case 0x67: { // jalr
+                int32_t imm = (int32_t)instruction >> 20;
+                uint32_t target = (regs[rs1] + imm);  
+
                 if (rd != 0) {
-                    regs[rd] = program_counter + 4;
+                    regs[rd] = program_counter + 4;  
                 }
-                program_counter = target;                       // -4 fordi vi tilføjer +4 til sidst
-                regs[0] = 0;
-                continue;
+                program_counter = target;            
+                continue;                            
             }
             case 0x23: {//S-type (sw, sh, sb)
-                //int32_t imm = ((int32_t)(instruction << 12) >> 20);
-                int32_t imm11_5 = (instruction >> 25) & 0x7F;
-                int32_t imm4_0  = (instruction >> 7) & 0x1F;
-                int32_t imm = (imm11_5 << 5) | imm4_0;
-                
-                // Sign-extend fra 12-bit til 32-bit
-                if (imm & 0x800) imm |= 0xFFFFF000;
-
+                int32_t imm = ((int32_t)(instruction >> 25) << 5) | ((instruction >> 7) & 0x1F);
+                if (imm & 0x800) imm |= 0xFFFFF000; 
                 uint32_t address = regs[rs1] + imm;
                 switch (funct3) {
                     case 0x0: { //sb
@@ -394,114 +337,97 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 }
                 break;
             }
-            case 0x63: {//B-type (beq, bne, blt, bge, bltu, bgeu)
-                int32_t immB = ((instruction >> 19) & 0x1000) |   // bit 12
-                               ((instruction << 4)  & 0x0800) |   // bit 11
-                               ((instruction >> 20) & 0x07E0) |   // bits 10:5
-                               ((instruction >> 7)  & 0x001E);    // bits 4:1
-                if (immB & 0x1000) immB |= 0xFFFFF000; // sign-extend bit 12
-                //immB <<= 1; // fordi offset er i bytes, og bit 0 altid 0
+            case 0x63: { // branches
+                int32_t imm = 
+                    ((instruction >> 19) & 0x1000) |   // imm[12]
+                    ((instruction << 4)  & 0x800)  |   // imm[11]
+                    ((instruction >> 20) & 0x7E0)  |   // imm[10:5]
+                    ((instruction >> 7)  & 0x1E);      // imm[4:1]
 
-                bool taken = false;
-
+                if (imm & 0x1000) imm |= 0xFFFFF000;  // sign-extend
+                
+                uint32_t target = program_counter + imm;
+                
                 switch (funct3) {
                     case 0x0: { //beq
                         taken = (regs[rs1] == regs[rs2]);
-                        //printf("hello from beq\n");
-                            //program_counter += immB;
                         break;
                     }
                     case 0x1: { //bne
                         taken = (regs[rs1] != regs[rs2]);
-                        //printf("hello from bne\n");
-                            //program_counter += immB;
                         break;
                     }
                     case 0x4: { //blt
                         taken = ((int32_t)regs[rs1] < (int32_t)regs[rs2]);
-                        //printf("hello from blt\n");
-                            //program_counter += immB;
                         break;
                     }
                     case 0x5: { //bge
                         taken = ((int32_t)regs[rs1] >= (int32_t)regs[rs2]);
-                        //printf("hello from bge\n");
-                            //program_counter += immB;
                         break;
                     }
                     case 0x6: { //bltu
                         taken = ((uint32_t)regs[rs1] < (uint32_t)regs[rs2]);
-                        //printf("hello from bltu\n");
-                            //program_counter += immB;
                         break;
                     }
                     case 0x7: { //bgeu
                         taken = ((uint32_t)regs[rs1] >= (uint32_t)regs[rs2]);
-                        //printf("hello from bgeu\n");
-                            //program_counter += immB;
                         break;
                     }
                 }
-                total_branches++;
-                if (taken) {
-                    mispredicts_nt++; //NT fajler når hop bliver taget
+                branch_count++; 
+                bool predicted_taken = false;
+
+                if (predictor_type == 1) {
+                        // NT: Always Not Taken
+                        predicted_taken = false;
+                    }
+                    else if (predictor_type == 2) {
+                        // BTFNT: Backward Taken, Forward Not Taken
+                        predicted_taken = (imm < 0);
+                    }
+                    else if (predictor_type >= 3) {
+                        // BIMODAL PREDICTOR – 2-bit saturating counter
+                        // Vi bruger de nederste bits af PC som index
+                        static uint8_t pht[4096] = {0};  // 4K entries, 2 bit hver → 1 byte per entry
+                        int index = (program_counter >> 2) & 0xFFF;  // 12 bit index → 4096 entries
+
+                        uint8_t counter = pht[index];
+                        predicted_taken = (counter >= 2);  // 2 eller 3 → predict taken
+
+                        // Opdater counter (saturating 2-bit)
+                        if (taken) {
+                            if (counter < 3) pht[index]++;
+                        } else {
+                            if (counter > 0) pht[index]--;
+                        }
+                    }
+
+                    if (predicted_taken != taken) {
+                        mispredict_count++;
+                    }
+
+                    if (taken) {
+                        program_counter = target;
+                        //jumped = true;
+                        continue;
+                    }
+                    break;
                 }
-                // BTFNT logic
-                bool backward = (immB < 0);
-                bool btfnt_prediction = backward; // Gæt taken hvis backward
-                if (btfnt_prediction != taken) {
-                    mispredicts_btfnt++;
-                }
+    
+            case 0x6F: { // jal
+                int32_t imm = 
+                    ((instruction & 0x80000000) >> 11) |  // bit 31 → imm[20]
+                    ((instruction & 0x7FE00000) >> 20) |  // bit 30:21 → imm[10:1]
+                    ((instruction & 0x00100000) >> 9)  |  // bit 20 → imm[11]
+                    ((instruction & 0x000FF000));         // bit 19:12 → imm[19:12]
 
-                // dynamic predictiors
-                for (int i = 0; i < 4; i++) {
-                    uint32_t pc_idx = program_counter >> 2; // Fjerner de to null-bits
-                    int mask = sizes[i] - 1;
-
-                    // Bimodal logic
-                    uint32_t b_idx = pc_idx & mask;
-                    handle_prediction(&bimodal_preds[i], b_idx, taken);
-
-                    // gShare logic
-                    uint32_t g_idx = (pc_idx ^ gshare_ghrs[i]) & mask;
-                    handle_prediction(&gshare_preds[i], g_idx, taken);
-
-                    // Opdater Global History Register for gShare
-                    gshare_ghrs[i] = (gshare_ghrs[i] << 1) | (taken ? 1 : 0);
-                }
-
-                if (taken) {
-                    program_counter += immB;
-                    regs[0] = 0;
-                    continue;
-                }
-                break;
-            }
-            case 0x6F: { //jal
-        //        int32_t imm = 
-        //                ((instruction >> 11) & 0x00100000) |   // bit 20 (sign)
-        //                ((instruction >> 20) & 0x00000800) |   // bit 11
-        //                ((instruction >>  0) & 0x000FF000) |   // bit 19:12
-        //                ((instruction >> 21) & 0x000007FE);    // bit 10:1
-        //                if (imm & 0x00100000) imm |= 0xFFE00000;  // sign-extend
-                int32_t imm20    = (instruction >> 31) & 0x1;
-                int32_t imm10_1  = (instruction >> 21) & 0x3FF;
-                int32_t imm11    = (instruction >> 20) & 0x1;
-                int32_t imm19_12 = (instruction >> 12) & 0xFF;
-
-                int32_t imm = (imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1);
-
-                if (imm & 0x100000) {
-                    imm |= 0xFFE00000;
-                }
+                if (imm & 0x100000) imm |= 0xFFF00000;  // sign-extend
 
                 if (rd != 0) {
-                    regs[rd] = program_counter + 4;   // ← returadresse!
+                    regs[rd] = program_counter + 4;
                 }
-
-                program_counter += imm;  // ← HOP! (-4 fordi vi tilføjer 4 senere)
-                regs[0] = 0;
-                continue;
+                program_counter += imm;
+                continue;  // spring over +4
             }
             case 0x17: { //auipc
                 int32_t imm = (int32_t)(instruction & 0xFFFFF000); // allerede shiftet
@@ -523,7 +449,19 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
         }
-        regs[0] = 0;
+        regs[0] = 0;  
+
+        // if (instruction_count % 100 == 0) {
+        //     printf("Instr %ld: a0 = %d\n", instruction_count, regs[10]);
+        // }
+
         program_counter += 4;
     }
+
+    struct Stat stat = {
+        .insns = instruction_count,
+        .branches = branch_count,
+        .mispredictions = mispredict_count
+    };
+    return stat;
 }

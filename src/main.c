@@ -65,6 +65,10 @@ void disassemble_to_stdout(struct memory* mem, struct program_info* prog_info, s
   }
 }
 
+
+int predictor = 0;
+
+
 int main(int argc, char *argv[])
 {
   struct memory *mem = memory_create();
@@ -81,6 +85,20 @@ int main(int argc, char *argv[])
         terminate("Could not open logfile, terminating.");
       }
     }
+
+  if (argc >= 4 && strcmp(argv[2], "-p") == 0) {
+        predictor = atoi(argv[3]);
+        if (predictor >= 3) {
+            printf("Using Bimodal predictor (2-bit, 4K entries)\n");
+        } else if (predictor == 2) {
+            printf("Using BTFNT predictor\n");
+        } else if (predictor == 1) {
+            printf("Using NT predictor\n");
+        }
+        memmove(&argv[2], &argv[4], (argc-4)*sizeof(char*));
+        argc -= 2;
+    }
+    
     if (argc == 4 && !strcmp(argv[2], "-p"))
     {
       prof_file = fopen(argv[3], "w");
@@ -105,11 +123,12 @@ int main(int argc, char *argv[])
     }
     int start_addr = prog_info.start;
     clock_t before = clock();
-    struct Stat stats = simulate(mem, start_addr, log_file, symbols);
+    struct Stat stats = simulate(mem, start_addr, log_file, symbols, predictor);
     long int num_insns = stats.insns;
     clock_t after = clock();
     int ticks = after - before;
     double mips = (1.0 * num_insns * CLOCKS_PER_SEC) / ticks / 1000000;
+    
     if (argc == 4 && !strcmp(argv[2], "-s"))
     {
       log_file = fopen(argv[3], "w");
@@ -127,6 +146,10 @@ int main(int argc, char *argv[])
     {
       printf("\nSimulated %ld instructions in %d host ticks (%f MIPS)\n", num_insns, ticks, mips);
     }
+    printf("Branches: %ld, Mispredictions: %ld (%.2f%%)\n",
+          stats.branches,
+          stats.mispredictions,
+          stats.branches ? 100.0 * stats.mispredictions / stats.branches : 0.0);
     memory_delete(mem);
   }
   else {
