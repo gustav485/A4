@@ -278,7 +278,7 @@ void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_s
                 break;
             }
             default: {
-                snprintf(result, buf_size, "what the helly: 0x%08x 0x%x", instruction);
+                snprintf(result, buf_size, "0x%08x 0x%x", instruction);
                 break;
             }
         }
