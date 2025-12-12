@@ -1,0 +1,11 @@
+     1   00010094 : 00001297   auipc t0 0x1000               
+     2   00010098 : 02428293   addi t0 t0 36                 
+     3   0001009c : 00128503   lb a0 1(t0)                   
+     4   000100a0 : 00229583   lh a1 2(t0)                   
+     5   000100a4 : 0082a603   lw a2 8(t0)                   
+     6   000100a8 : 0012c683   lbu a3 1(t0)                  
+     7   000100ac : 0022d703   lhu a4 2(t0)                  
+     8   000100b0 : 05d00893   addi a7 zero 93               
+     9   000100b4 : 00000073   ecall                         
+
+Simulated 9 instructions in 25 host ticks (0.360000 MIPS)

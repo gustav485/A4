@@ -1,0 +1,14 @@
+     1   00010074 : 0c800293   addi t0 zero 200              
+     2   00010078 : f9c00313   addi t1 zero -100             
+     3   0001007c : 02a28513   addi a0 t0 42                 
+     4   00010080 : 00329593   slli a1 t0 3                  
+     5   00010084 : 00032613   slti a2 t1 0                  
+     6   00010088 : 0642b693   sltiu a3 t0 100               
+     7   0001008c : 0042d793   srli a5 t0 4                  
+     8   00010090 : 40235813   srai a6 t1 2                  
+     9   00010094 : 0102e893   ori a7 t0 16                  
+    10   00010098 : 0ff2f913   andi s2 t0 255                
+    11   0001009c : 05d00893   addi a7 zero 93               
+    12   000100a0 : 00000073   ecall                         
+
+Simulated 12 instructions in 39 host ticks (0.307692 MIPS)

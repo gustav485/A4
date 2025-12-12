@@ -1,0 +1,20 @@
+     1   00010074 : 06400293   addi t0 zero 100              
+     2   00010078 : 00300313   addi t1 zero 3                
+     3   0001007c : ffb00393   addi t2 zero -5               
+     4   00010080 : 01900413   addi s0 zero 25               
+     5   00010084 : 00628533   add a0 t0 t1                  
+     6   00010088 : 406285b3   sub a1 t0 t1                  
+     7   0001008c : 02628633   mul a2 t0 t1                  
+     8   00010090 : 005316b3   sll a3 t1 t0                  
+     9   00010094 : 0053a733   slt a4 t2 t0                  
+    10   00010098 : 0072b7b3   xor a5 t0 t2                  
+    11   0001009c : 0062c833   xor a6 t0 t1                  
+    12   000100a0 : 0062f8b3   and a7 t0 t1                  
+    13   000100a4 : 0062d933   srl s2 t0 t1                  
+    14   000100a8 : 4063d9b3   sra s3 t2 t1                  
+    15   000100ac : 0062ea33   or s4 t0 t1                   
+    16   000100b0 : 02646ab3   rem s5 s0 t1                  
+    17   000100b4 : 05d00893   addi a7 zero 93               
+    18   000100b8 : 00000073   ecall                         
+
+Simulated 18 instructions in 26 host ticks (0.692308 MIPS)
