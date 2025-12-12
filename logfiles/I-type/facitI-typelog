@@ -1,0 +1,15 @@
+     1 =>  10074 : 0c800293	_start              :   ADDI t0, zero, 200        	    R[ 5] <- c8
+     2     10078 : f9c00313	                        ADDI t1, zero, -100       	    R[ 6] <- ffffff9c
+     3     1007c : 02a28513	                        ADDI a0, t0, 42           	    R[10] <- f2
+     4     10080 : 00329593	                        SLLI a1, t0, 3            	    R[11] <- 640
+     5     10084 : 00032613	                        SLTI a2, t1, 0            	    R[12] <- 1
+     6     10088 : 0642b693	                        SLTIU a3, t0, 100         	    R[13] <- 0
+     7     1008c : 0042d793	                        SRLI a5, t0, 4            	    R[15] <- c
+     8     10090 : 40235813	                        SRAI a6, t1, 2            	    R[16] <- ffffffe7
+     9     10094 : 0102e893	                        ORI a7, t0, 16            	    R[17] <- d8
+    10     10098 : 0ff2f913	                        ANDI s2, t0, 255          	    R[18] <- c8
+    11     1009c : 05d00893	                        ADDI a7, zero, 93         	    R[17] <- 5d
+    12     100a0 : 00000073	                        ECALL                     	
+
+Simulated 12 instructions in 181 host ticks (0.066298 MIPS)
+In 15 simulated clock cycles, CPI = 1.250000

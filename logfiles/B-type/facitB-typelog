@@ -1,0 +1,18 @@
+     1 =>  10074 : 00a00293	_start              :   ADDI t0, zero, 10         	    R[ 5] <- a
+     2     10078 : 00500313	                        ADDI t1, zero, 5          	    R[ 6] <- 5
+     3     1007c : 00a00393	                        ADDI t2, zero, 10         	    R[ 7] <- a
+     4     10080 : ff600413	                        ADDI s0, zero, -10        	    R[ 8] <- fffffff6
+     5     10084 : 00000513	                        ADDI a0, zero, 0          	    R[10] <- 0
+     6     10088 : 00728663	                        BEQ t0, t2, 10094         	{T}
+     7 =>  10094 : 00a50513	                        ADDI a0, a0, 10           	    R[10] <- a
+     8     10098 : 00729663	                        BNE t0, t2, 100a4         	{_}
+     9     1009c : 06450513	                        ADDI a0, a0, 100          	    R[10] <- 6e
+    10     100a0 : 0080006f	                        J 100a8                   	
+    11 =>  100a8 : 00544463	                        BLT s0, t0, 100b0         	{T}
+    12 =>  100b0 : 00545463	                        BGE s0, t0, 100b8         	{_}
+    13     100b4 : 3e850513	                        ADDI a0, a0, 1000         	    R[10] <- 456
+    14     100b8 : 05d00893	                        ADDI a7, zero, 93         	    R[17] <- 5d
+    15     100bc : 00000073	                        ECALL                     	
+
+Simulated 15 instructions in 63 host ticks (0.238095 MIPS)
+In 21 simulated clock cycles, CPI = 1.400000

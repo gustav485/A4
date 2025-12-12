@@ -1,0 +1,15 @@
+     1 =>  10094 : 00001297	_start              :   AUIPC t0, 0x1             	    R[ 5] <- 11094
+     2     10098 : 03028293	                        ADDI t0, t0, 48           	    R[ 5] <- 110c4
+     3     1009c : 12345337	                        LUI t1, 0x12345           	    R[ 6] <- 12345000
+     4     100a0 : 67830313	                        ADDI t1, t1, 1656         	    R[ 6] <- 12345678
+     5     100a4 : 04200393	                        ADDI t2, zero, 66         	    R[ 7] <- 42
+     6     100a8 : 0000c437	                        LUI s0, 0xc               	    R[ 8] <- c000
+     7     100ac : bcc40413	                        ADDI s0, s0, -1076        	    R[ 8] <- bbcc
+     8     100b0 : 00728023	                        SB t2, 0(t0)              	             42       ->  Mem[110c4]
+     9     100b4 : 00829223	                        SH s0, 4(t0)              	             bbcc     ->  Mem[110c8]
+    10     100b8 : 0062a423	                        SW t1, 8(t0)              	             12345678 ->  Mem[110cc]
+    11     100bc : 05d00893	                        ADDI a7, zero, 93         	    R[17] <- 5d
+    12     100c0 : 00000073	                        ECALL                     	
+
+Simulated 12 instructions in 84 host ticks (0.142857 MIPS)
+In 15 simulated clock cycles, CPI = 1.250000
