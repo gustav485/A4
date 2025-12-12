@@ -86,10 +86,10 @@ int main(int argc, char *argv[])
       }
     }
 
-  if (argc >= 4 && strcmp(argv[2], "-p") == 0) {
+  if (argc >= 4 && strcmp(argv[2], "-pred") == 0) {
         predictor = atoi(argv[3]);
         if (predictor >= 3) {
-            printf("Using Bimodal predictor (2-bit, 4K entries)\n");
+            printf("Using Bimodal predictor\n");
         } else if (predictor == 2) {
             printf("Using BTFNT predictor\n");
         } else if (predictor == 1) {

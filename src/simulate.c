@@ -13,7 +13,7 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
     bool done = false;
     long int branch_count = 0;
     long int mispredict_count = 0;
-    uint32_t last_pc = start_addr - 4;  // så første instruktion får ">"
+    uint32_t last_pc = start_addr - 4;  
 
     while (!done) {
         uint32_t instruction = memory_rd_w(mem, program_counter);
@@ -386,15 +386,13 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         predicted_taken = (imm < 0);
                     }
                     else if (predictor_type >= 3) {
-                        // BIMODAL PREDICTOR – 2-bit saturating counter
-                        // Vi bruger de nederste bits af PC som index
-                        static uint8_t pht[4096] = {0};  // 4K entries, 2 bit hver → 1 byte per entry
-                        int index = (program_counter >> 2) & 0xFFF;  // 12 bit index → 4096 entries
+                        // Bimodal
+                        static uint8_t pht[4096] = {0};  
+                        int index = (program_counter >> 2) & 0xFFF;  
 
                         uint8_t counter = pht[index];
-                        predicted_taken = (counter >= 2);  // 2 eller 3 → predict taken
+                        predicted_taken = (counter >= 2);  
 
-                        // Opdater counter (saturating 2-bit)
                         if (taken) {
                             if (counter < 3) pht[index]++;
                         } else {
@@ -408,7 +406,6 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
 
                     if (taken) {
                         program_counter = target;
-                        //jumped = true;
                         continue;
                     }
                     break;
